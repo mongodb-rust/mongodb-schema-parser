@@ -2,6 +2,8 @@ coverage/
 target/
 tmp/
 dist/
+pkg/
+wasm-pack.log
 npm-debug.log*
 Cargo.lock
 .DS_Store

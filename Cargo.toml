@@ -8,7 +8,11 @@ description = "MongoDB Schema Analysis"
 authors = ["Irina Shestak <shestak.irina@gmail.com>"]
 readme = "README.md"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 failure = "0.1.2"
+wasm-bindgen="0.2"
 
 [dev-dependencies]
