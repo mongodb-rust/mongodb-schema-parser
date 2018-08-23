@@ -9,9 +9,60 @@ contributions are valued.
 This guide explains the process for contributing to the project's GitHub
 Repository.
 
+- [Environment Setup](#environment-setup)
 - [Code of Conduct](#code-of-conduct)
 - [Bad Actors](#bad-actors)
-- [Developer Certificate of Origin](#developer-certificate-of-origin)
+
+## Environment Setup
+### Latest rust
+This project uses a few things that you should set yourself up with before
+starting work. First of all, make sure you have the latest `rust` and `cargo`
+installed. The best way to do that is with `rustup`, and you can read about it
+more in the [rust
+book](https://doc.rust-lang.org/book/second-edition/ch01-01-installation.html).
+But to get yourself uptodate with all the things:
+
+```bash
+rustup update
+```
+### Formatting
+We are using two tools to help with best-practice fromatting:
+[rustfmt](https://github.com/rust-lang-nursery/rustfmt) and
+[clippy](https://github.com/rust-lang-nursery/rust-clippy). There is already an
+existing `rustfmt.toml` for the project, and you can also setup your editor to
+autoformat. If you're on `vim`, something like this is really helpful in your
+`.vimrc`:
+
+```vim
+" rust plugin
+Plugin 'rust-lang/rust.vim'
+
+" autoformatting
+au BufRead,BufNewFile *.rs set filetype=rust
+let g:rustfmt_autosave = 1
+let g:rust_recommended_style = 0
+augroup filetype_rust
+  autocmd!
+  autocmd BufReadPost *.rs setlocal filetype=rust
+  setl sw=2 sts=2 et
+augroup END
+```
+`rust-nursery` also has support for other editors, like
+[vscode](https://github.com/rust-lang-nursery/rls-vscode).
+
+### Wasm Build
+To be able to use this module in JavaScript and Node, we compile it to WASM. For
+that we use [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) inside our
+`lib.rs`, and [wasm-pack](https://github.com/rustwasm/wasm-pack) to make a
+package to be published to `npm`. To do so, install `wasm-pack`:
+```bash
+cargo install wasm-pack
+```
+and run build that will generate a `pkg` directory that can be then published to
+npm:
+```bash
+wasm-pack build
+```
 
 ## Code of Conduct
 The project has a [Code of Conduct](./CODE_OF_CONDUCT.md) that *all*
