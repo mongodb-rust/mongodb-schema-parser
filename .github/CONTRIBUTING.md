@@ -14,7 +14,7 @@ Repository.
 - [Bad Actors](#bad-actors)
 
 ## Environment Setup
-### Latest rust
+### Latest Rust
 This project uses a few things that you should set yourself up with before
 starting work. First of all, make sure you have the latest `rust` and `cargo`
 installed. The best way to do that is with `rustup`, and you can read about it
@@ -62,6 +62,20 @@ and run build that will generate a `pkg` directory that can be then published to
 npm:
 ```bash
 wasm-pack build
+```
+
+### Coding Style
+
+A few things to follow when working on this project. 
+
+1. Avoid using `unsafe-rust`. `lib.rs` is already setup with
+   `#[deny(unsafe-rust)]` to help with that.
+
+2. Structs should implement `Copy` and `Debug` traits to avoid future
+   complications. These can be simple appended with:
+``` rust
+#[derive(Debug, Copy)]
+struct Pair(Box<i32>, Box<i32>)
 ```
 
 ## Code of Conduct
