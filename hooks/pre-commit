@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# pre-commit hook for rustfmt and cargo clippy. 
+# Original: https://github.com/google/tarpc/blob/master/hooks/pre-commit 
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # no colour
+
+PREFIX="${GREEN}[PRECOMMIT]${NC}"
+SUCCESS="${GREEN}ok${NC}"
+FAILURE="${RED}FAILED${NC}"
+
+
+# check that rustfmt exits with 0
+printf "${PREFIX} Checking for rustfmt ... "
+command -v cargo fmt &>/dev/null
+if [ $? == 0  ]; then
+    printf "${SUCCESS}\n"
+else
+    printf "${FAILURE}\n"
+    exit 1
+fi
+
+# Just check that running rustfmt doesn't do anything to the file. I do this
+# instead of
+# modifying the file because I don't want to mess with the developer's index,
+# which may
+# not only contain discrete files.
+printf "${PREFIX} Checking formatting ... "
+FMTRESULT=0
+diff=""
+for file in $(git diff --name-only --cached);
+do
+    if [ ${file: -3} == ".rs"  ]; then
+        diff="$diff$(cargo fmt -- --skip-children --write-mode=diff $file)"
+    fi
+done
+if grep --quiet "^Diff at line" <<< "$diff"; then
+    FMTRESULT=1
+fi
+
+if [ "${TARPC_SKIP_RUSTFMT}" == 1  ]; then
+    printf "${SKIPPED}\n"$?
+elif [ ${FMTRESULT} != 0  ]; then
+    FAILED=1
+    printf "${FAILURE}\n"
+    echo "$diff" | sed 's/Using rustfmt config file.*$/d/'
+else
+    printf "${SUCCESS}\n"
+fi
+
+exit ${FAILED}

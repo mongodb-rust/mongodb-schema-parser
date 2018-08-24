@@ -10,7 +10,13 @@ This guide explains the process for contributing to the project's GitHub
 Repository.
 
 - [Environment Setup](#environment-setup)
+  * [Latest Rust](#latest-rust)
+  * [Formatting](#formatting)
+  * [Wasm Build](#wasm-build)
+  * [Coding Style](#coding-style)
+
 - [Code of Conduct](#code-of-conduct)
+
 - [Bad Actors](#bad-actors)
 
 ## Environment Setup
