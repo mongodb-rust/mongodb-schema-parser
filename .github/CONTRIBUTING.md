@@ -56,6 +56,12 @@ augroup END
 `rust-nursery` also has support for other editors, like
 [vscode](https://github.com/rust-lang-nursery/rls-vscode).
 
+`rustfmt` will also run as a pre-commit hook. You will need to copy the file
+that's currently in `./hooks/pre-commit` to your local `.git` directory:
+```bash
+cp hooks/pre-commit ./git/hooks/pre-commit
+```
+
 ### Wasm Build
 To be able to use this module in JavaScript and Node, we compile it to WASM. For
 that we use [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) inside our
