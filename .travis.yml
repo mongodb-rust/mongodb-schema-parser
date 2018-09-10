@@ -4,7 +4,7 @@ rust:
 
 before_script: |
   rustup component add rustfmt-preview &&
-  cargo install clippy -f
+  rustup component add cargo-clippy 
   # run a wasm-pack build to make sure we can still compile to wasm
   cargo install wasm-pack
   wasm-pack build
