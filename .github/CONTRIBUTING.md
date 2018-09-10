@@ -75,6 +75,7 @@ npm:
 ```bash
 wasm-pack build
 ```
+Travis CI will also run a wasm-pack build to check we are able to compile this correctly.
 
 ### Coding Style
 
