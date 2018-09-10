@@ -15,5 +15,6 @@ mod error;
 pub use error::{Error, ErrorKind, Result};
 
 #[wasm_bindgen]
-pub fn parses(schema: &str) { 
+pub fn parses(_schema: &str) { 
+  unimplemented!();
 }
