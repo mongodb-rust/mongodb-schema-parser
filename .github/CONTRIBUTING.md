@@ -10,7 +10,13 @@ This guide explains the process for contributing to the project's GitHub
 Repository.
 
 - [Environment Setup](#environment-setup)
+  * [Latest Rust](#latest-rust)
+  * [Formatting](#formatting)
+  * [Wasm Build](#wasm-build)
+  * [Coding Style](#coding-style)
+
 - [Code of Conduct](#code-of-conduct)
+
 - [Bad Actors](#bad-actors)
 
 ## Environment Setup
@@ -50,6 +56,12 @@ augroup END
 `rust-nursery` also has support for other editors, like
 [vscode](https://github.com/rust-lang-nursery/rls-vscode).
 
+`rustfmt` will also run as a pre-commit hook. You will need to copy the file
+that's currently in `./hooks/pre-commit` to your local `.git` directory:
+```bash
+cp hooks/pre-commit ./git/hooks/pre-commit
+```
+
 ### Wasm Build
 To be able to use this module in JavaScript and Node, we compile it to WASM. For
 that we use [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) inside our
@@ -63,6 +75,7 @@ npm:
 ```bash
 wasm-pack build
 ```
+Travis CI will also run a wasm-pack build to check we are able to compile this correctly.
 
 ### Coding Style
 
