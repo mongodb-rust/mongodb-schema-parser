@@ -28,6 +28,14 @@ pub enum ErrorKind {
   /// An error caused by an IO failure.
   #[fail(display = "{}", _0)]
   Io(#[cause] io::Error),
+  /// An error caused by an unknown input type.
+  #[fail(
+    display = "Unknown Input Type for 'docs'. Must be an array or a MongoDB Cursor"
+  )]
+  UnknownInputType,
+  /// An parse error
+  #[fail(display = "Parse Error in input document")]
+  ParseError,
 }
 
 /// A specialized [`Error`] type for this crate's operations.
