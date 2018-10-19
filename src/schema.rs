@@ -1,11 +1,11 @@
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct MongoDBSchema {
   pub(crate) count: usize,
   pub(crate) fields: Vec<Field>,
 }
 
 // TODO: field_type should be able to be either string or a vector of strings
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Field {
   pub(crate) name: String,
   pub(crate) path: String,
@@ -16,7 +16,7 @@ pub struct Field {
   pub(crate) types: Vec<DocumentKind>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ConstantType {
   name: String,
   path: String,
@@ -28,7 +28,7 @@ pub struct ConstantType {
 
 // TODO: values should be able to be a vector of either strings, vectors, or
 // booleans.
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct PrimitiveType {
   pub(crate) name: String,
   pub(crate) path: String,
@@ -39,7 +39,7 @@ pub struct PrimitiveType {
   pub(crate) unique: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ArrayType {
   name: String,
   path: String,
@@ -52,7 +52,7 @@ pub struct ArrayType {
   unique: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct DocumentType {
   name: String,
   path: String,
@@ -64,7 +64,7 @@ pub struct DocumentType {
 }
 
 /// each Field can have a vector of documents, and they can be either:
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub enum DocumentKind {
   PrimitiveType(PrimitiveType),
   ConstantType(ConstantType),
@@ -73,13 +73,13 @@ pub enum DocumentKind {
 }
 
 /// Field type present in a given schema: can be either a vector or a Stringing
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub enum FieldKind {
   Vec,
   String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub enum PrimitiveKind {
   String,
   usize,

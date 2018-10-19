@@ -6,14 +6,18 @@
 
 #[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate serde_derive;
 
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
 
-mod error;
+extern crate serde;
+extern crate serde_json;
 
 use std::string::String;
 
+mod error;
 pub use error::{Error, ErrorKind, Result};
 
 struct ParseOptions {
@@ -28,7 +32,7 @@ use schema::MongoDBSchema;
 use schema::PrimitiveType;
 
 #[wasm_bindgen]
-pub fn parser(_schema: &str) -> Result<MongoDBSchema> {
+pub fn parser(_schema: &str) -> Result<String> {
   let mut values_vec = Vec::new();
   values_vec.push(1);
 
@@ -65,5 +69,12 @@ pub fn parser(_schema: &str) -> Result<MongoDBSchema> {
     fields: field_vec,
   };
 
-  return Ok(mongodb_schema);
+  // ideally want to pass mongodb schema struct to js land, but with Vecs in
+  // the struct, it's currently not possible:
+  // https://github.com/rustwasm/wasm-bindgen/issues/111
+  // return Ok(mongodb_schema);
+
+  let json = serde_json::to_string(&mongodb_schema).unwrap();
+
+  Ok(json)
 }
