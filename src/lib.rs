@@ -6,22 +6,22 @@
 
 #[macro_use]
 extern crate failure;
-#[macro_use]
-extern crate serde_derive;
-
-extern crate serde;
-extern crate serde_json;
+// TODO: return json
+// #[macro_use]
+// extern crate serde_derive;
+//
+// extern crate serde;
+// extern crate serde_json;
 
 use std::string::String;
 
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
-struct ParseOptions {
-  semantic_types: bool,
-  store_values: bool,
-}
-
+// struct ParseOptions {
+//   semantic_types: bool,
+//   store_values: bool,
+// }
 mod schema;
 use schema::DocumentKind;
 use schema::Field;
