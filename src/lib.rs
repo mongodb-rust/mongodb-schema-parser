@@ -10,16 +10,6 @@ extern crate bson;
 extern crate failure;
 
 // there is an attribute for test only imports
-// #[macro_use]
-// extern crate mongodb;
-// use mongodb::{Client, ThreadedClient};
-// use mongodb::db::ThreadedDatabase;
-// use mongodb::coll::options::FindOptions;
-
-// #[macro_use]
-// extern crate bson;
-// use bson::Bson;
-
 use bson::{Bson, Document};
 
 use std::string::String;
@@ -119,29 +109,6 @@ mod tests {
 
   #[test]
   fn can_generate_schema() {
-    // let client = Client::connect("localhost", 27017).expect("Failed to initialize standalone client.");
-
-    // let coll = client.db("crunchbase").collection("companies");
-    // let limit_option: Option<i64> = Some(1);
-    // let find_option = Bson::OrderedDocument {
-    //   name: "AdventNet",
-    // };
-    // // create find_options passing in limit ?
-    // // let find_options =
-    // let mut cursor = coll.find(Some(find_option), None)
-    //   .ok().expect("Failed to execute find.");
-
-    // let item = cursor.next();
-
-    // match item {
-    //   Some(Ok(doc)) => match doc.get("name") {
-    //     Some(&Bson::String(ref name)) => assert_eq!(name, "AdventNet"),
-    //     _ => panic!("Expected name to be AdventNet"),
-    //   },
-    //   Some(Err(_)) => panic!("Cannot get next cursor from server"),
-    //   None => panic!("Cannot obtain document from server"),
-    // }
-
     let data = r#"{
       "github": {
         "name": "Irina",
