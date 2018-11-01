@@ -33,18 +33,16 @@ use schema::PrimitiveType;
 
 fn add_field_schema_to_document(doc: &mut Document, value: Bson) {
   let value_type = match value {
-      Bson::FloatingPoint(_) |
-      Bson::I32(_) |
-      Bson::I64(_) => "Number",
-      Bson::Boolean(_) => "Boolean",
-      Bson::Document(subdoc) => {
-        let schema = generate_schema_from_document(subdoc);
-        doc.insert("type", schema);
-        return;
-      },
-      Bson::Array(arr) => "Array",
-      Bson::Null => "Null",
-      _ => unimplemented!(),
+    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => "Number",
+    Bson::Boolean(_) => "Boolean",
+    Bson::Document(subdoc) => {
+      let schema = generate_schema_from_document(subdoc);
+      doc.insert("type", schema);
+      return;
+    }
+    Bson::Array(arr) => "Array",
+    Bson::Null => "Null",
+    _ => unimplemented!(),
   };
 
   doc.insert("type", value_type);
@@ -53,15 +51,17 @@ fn add_field_schema_to_document(doc: &mut Document, value: Bson) {
 fn generate_schema_from_document(doc: Document) -> Document {
   let count = doc.len();
 
-  let fields = doc.into_iter().fold(Vec::new(), |mut fields, (key, value)| {
-    let mut value_doc = doc! {
-      "name": key
-    };
-    add_field_schema_to_document(&mut value_doc, value);
+  let fields = doc
+    .into_iter()
+    .fold(Vec::new(), |mut fields, (key, value)| {
+      let mut value_doc = doc! {
+        "name": key
+      };
+      add_field_schema_to_document(&mut value_doc, value);
 
-    fields.push(Bson::Document(value_doc));
-    fields
-  });
+      fields.push(Bson::Document(value_doc));
+      fields
+    });
 
   doc! {
     // NOTE: This will be incorrect if the number of fields is greater than i64::MAX
@@ -117,8 +117,8 @@ pub fn parser(_schema: &str) -> Result<MongoDBSchema> {
 
 #[cfg(test)]
 mod test {
-  use bson::Bson;
   use super::generate_schema_from_document;
+  use bson::Bson;
 
   #[test]
   fn simple_schema_gen() {
