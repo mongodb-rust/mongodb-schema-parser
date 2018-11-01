@@ -9,6 +9,7 @@ extern crate bson;
 #[macro_use]
 extern crate failure;
 
+// there is an attribute for test only imports
 // #[macro_use]
 // extern crate mongodb;
 // use mongodb::{Client, ThreadedClient};
@@ -112,6 +113,8 @@ pub fn parser() -> MongoDBSchema {
 
 #[cfg(test)]
 mod tests {
+  // if bringing in something from above scope: 'use'
+  // use super::{name_of_function_above};
   use super::*;
 
   #[test]
@@ -138,6 +141,16 @@ mod tests {
     //   Some(Err(_)) => panic!("Cannot get next cursor from server"),
     //   None => panic!("Cannot obtain document from server"),
     // }
+
+    let data = r#"{
+      "github": {
+        "name": "Irina",
+        "handle": "lrlna"
+      },
+      "foo": 4
+    }"#;
+
+    let v: Value = serde_json::from_str(data)?;
 
     let mongodb_schema = parser();
     let count: usize = 4;
