@@ -19,6 +19,7 @@ pub use error::{Error, ErrorKind, Result};
 fn add_field_schema_to_document(doc: &mut Document, value: Bson) {
   let value_type = match value {
     Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => "Number",
+    Bson::String(_) => "String",
     Bson::Boolean(_) => "Boolean",
     Bson::Document(subdoc) => {
       let schema = generate_schema_from_document(subdoc);
@@ -63,11 +64,29 @@ mod test {
   #[test]
   fn simple_schema_gen() {
     let d = doc! {
-      "foo": 12,
-      "bar": [true, Bson::Null],
-      "sub": {
-        "x": -10
-      }
+      "_id": {
+        "$oid": "50319491fe4dce143835c552"
+      },
+      "membership_status": "ACTIVE",
+      "name": "Ellie J Clarke",
+      "gender": "male",
+      "age": 36,
+      "phone_no": "+19786213180",
+      "last_login": {
+        "$date": "2014-01-31T22:26:33.000Z"
+      },
+      "address": {
+        "city": "El Paso, Texas",
+        "street": "133 Aloha Ave",
+        "postal_code": 50017,
+        "country": "USA",
+        "location": {
+          "type": "Point",
+          "coordinates": [ -106.3974968970265, 31.79689833641156 ]
+        }
+      },
+      "favorite_feature": "Auth",
+      "email": "corefinder88@hotmail.com"
     };
 
     println!("{}", generate_schema_from_document(d));
