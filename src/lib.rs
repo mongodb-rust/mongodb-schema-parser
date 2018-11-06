@@ -16,17 +16,17 @@ use std::string::String;
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
-fn add_field_schema_to_document(doc: &mut Document, value: Bson) {
+fn add_field_schema_to_document(doc: &mut Document, value: Bson, path: String) {
   let value_type = match value {
     Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => "Number",
     Bson::String(_) => "String",
     Bson::Boolean(_) => "Boolean",
     Bson::Document(subdoc) => {
-      let schema = generate_schema_from_document(subdoc);
+      let schema = generate_schema_from_document(subdoc, Some(path));
       doc.insert("type", schema);
       return;
     }
-    Bson::Array(arr) => "Array",
+    Bson::Array(_) => "Array",
     Bson::Null => "Null",
     _ => unimplemented!(),
   };
@@ -34,20 +34,33 @@ fn add_field_schema_to_document(doc: &mut Document, value: Bson) {
   doc.insert("type", value_type);
 }
 
-fn generate_schema_from_document(doc: Document) -> Document {
+pub fn generate_schema_from_document(
+  doc: Document,
+  path: Option<String>,
+) -> Document {
   let count = doc.len();
 
-  let fields = doc
-    .into_iter()
-    .fold(Vec::new(), |mut fields, (key, value)| {
-      let mut value_doc = doc! {
-        "name": key
-      };
-      add_field_schema_to_document(&mut value_doc, value);
+  let mut fields = vec![];
 
-      fields.push(Bson::Document(value_doc));
-      fields
-    });
+  for (key, value) in doc {
+    let current_path = match &path {
+      None => key.clone(),
+      Some(path) => {
+        let mut path = path.clone();
+        path.push_str(".");
+        path.push_str(&key);
+        path
+      }
+    };
+
+    let mut value_doc = doc! {
+      "name": &key,
+      "path": current_path,
+    };
+    add_field_schema_to_document(&mut value_doc, value, key);
+
+    fields.push(Bson::Document(value_doc));
+  }
 
   doc! {
     // NOTE: This will be incorrect if the number of fields is greater than i64::MAX
@@ -89,6 +102,6 @@ mod test {
       "email": "corefinder88@hotmail.com"
     };
 
-    println!("{}", generate_schema_from_document(d));
+    println!("{}", generate_schema_from_document(d, None));
   }
 }
