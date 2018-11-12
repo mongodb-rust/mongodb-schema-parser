@@ -16,24 +16,6 @@ use std::string::String;
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
-fn add_field_schema_to_document(doc: &mut Document, value: Bson, path: String) {
-  let value_type = match value {
-    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => "Number",
-    Bson::String(_) => "String",
-    Bson::Boolean(_) => "Boolean",
-    Bson::Document(subdoc) => {
-      let schema = generate_schema_from_document(subdoc, Some(path));
-      doc.insert("type", schema);
-      return;
-    }
-    Bson::Array(_) => "Array",
-    Bson::Null => "Null",
-    _ => unimplemented!(),
-  };
-
-  doc.insert("type", value_type);
-}
-
 pub fn generate_schema_from_document(
   doc: Document,
   path: Option<String>,
@@ -55,24 +37,47 @@ pub fn generate_schema_from_document(
 
     let mut value_doc = doc! {
       "name": &key,
-      "path": current_path,
+      "path": &current_path,
     };
-    add_field_schema_to_document(&mut value_doc, value, key);
+    add_type(&mut value_doc, value);
+    add_to_type(&mut value_doc, value, current_path);
 
     fields.push(Bson::Document(value_doc));
   }
 
   doc! {
-    // NOTE: This will be incorrect if the number of fields is greater than i64::MAX
     "count": count as i64,
     "fields": fields
   }
 }
 
+fn add_type(doc: &mut Document, value: Bson) {
+  let value_type = match value {
+    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => "Number",
+    Bson::Document(_) => "Document",
+    Bson::Boolean(_) => "Boolean",
+    Bson::String(_) => "String",
+    Bson::Array(_) => "Array",
+    Bson::Null => "Null",
+    _ => unimplemented!(),
+  };
+
+  doc.insert("type", value_type);
+}
+
+fn add_to_type(doc: &mut Document, value: Bson, path: String) {
+  let doc_type = doc.get_str("type").unwrap();
+  let schema = match doc_type {
+    "Document" => generate_schema_from_document(value, Some(path)),
+    "Array" => unimplemented!(),
+    _ => unimplemented!(),
+  };
+  doc.insert("type", schema);
+}
+
 #[cfg(test)]
 mod test {
   use super::generate_schema_from_document;
-  use bson::Bson;
 
   #[test]
   fn simple_schema_gen() {
