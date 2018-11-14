@@ -39,8 +39,15 @@ pub fn generate_schema_from_document(
       "name": &key,
       "path": &current_path,
     };
-    add_type(&mut value_doc, value);
-    add_to_type(&mut value_doc, value, current_path);
+
+    let mut types = vec![];
+
+    let value_type = add_to_types(value, current_path);
+
+    if let Some(value_type) = value_type {
+      types.push(bson::to_bson(&value_type).unwrap());
+      value_doc.insert("types", types);
+    }
 
     fields.push(Bson::Document(value_doc));
   }
@@ -51,28 +58,54 @@ pub fn generate_schema_from_document(
   }
 }
 
-fn add_type(doc: &mut Document, value: Bson) {
-  let value_type = match value {
-    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => "Number",
-    Bson::Document(_) => "Document",
-    Bson::Boolean(_) => "Boolean",
-    Bson::String(_) => "String",
-    Bson::Array(_) => "Array",
-    Bson::Null => "Null",
-    _ => unimplemented!(),
-  };
-
-  doc.insert("type", value_type);
+fn add_type(value: &Bson) -> Option<&str> {
+  match value {
+    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
+    Bson::Document(_) => Some("Document"),
+    Bson::Boolean(_) => Some("Boolean"),
+    Bson::String(_) => Some("String"),
+    Bson::Array(_) => Some("Array"),
+    Bson::Null => Some("Null"),
+    _ => None,
+  }
 }
 
-fn add_to_type(doc: &mut Document, value: Bson, path: String) {
-  let doc_type = doc.get_str("type").unwrap();
-  let schema = match doc_type {
-    "Document" => generate_schema_from_document(value, Some(path)),
-    "Array" => unimplemented!(),
-    _ => unimplemented!(),
-  };
-  doc.insert("type", schema);
+fn add_value(value: &Bson) -> Option<&str> {
+  match value {
+    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
+    Bson::Document(_) => Some("Document"),
+    Bson::Boolean(_) => Some("Boolean"),
+    Bson::String(_) => Some("String"),
+    Bson::Array(_) => Some("Array"),
+    Bson::Null => Some("Null"),
+    _ => None,
+  }
+}
+
+fn add_to_types(value: Bson, path: String) -> Option<Document> {
+  let bson_type = add_type(&value);
+  let match_value = value.clone();
+  match match_value {
+    Bson::Document(subdoc) => {
+      Some(generate_schema_from_document(subdoc, Some(path)))
+    }
+    Bson::Array(_) => {
+      let mut subarray = doc!{};
+      Some(subarray)
+    }
+    _ => {
+      let mut values = doc!{
+        "path": &path,
+      };
+      if let Some(bson_type) = bson_type {
+        values.insert("name", bson::to_bson(&bson_type).unwrap());
+        values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
+      }
+      let val = vec![&value];
+      values.insert("values", bson::to_bson(&val).unwrap());
+      Some(values)
+    }
+  }
 }
 
 #[cfg(test)]
@@ -100,7 +133,7 @@ mod test {
         "country": "USA",
         "location": {
           "type": "Point",
-          "coordinates": [ -106.3974968970265, 31.79689833641156 ]
+          "coordinates":[-73.4446279457308,40.89674015263909]
         }
       },
       "favorite_feature": "Auth",
