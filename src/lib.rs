@@ -108,10 +108,14 @@ fn add_to_types(value: Bson, path: String) -> Option<Document> {
 #[cfg(test)]
 mod test {
   use super::generate_schema_from_document;
+  use super::Bson;
+
+  extern crate serde;
+  extern crate serde_json;
 
   #[test]
   fn simple_schema_gen() {
-    let d = doc! {
+    let doc = doc! {
       "_id": {
         "$oid": "50319491fe4dce143835c552"
       },
@@ -137,6 +141,15 @@ mod test {
       "email": "corefinder88@hotmail.com"
     };
 
-    println!("{}", generate_schema_from_document(d, None));
+    println!("{}", generate_schema_from_document(doc, None));
+  }
+
+  fn json_file_gen() {
+    let mut json: serde_json::Value =
+      serde_json::from_str("../examples/fanclub.json")
+        .expect("JSON File not well formatted");
+
+    let doc = Bson::from_json(json);
+    println!("{}", generate_schema_from_document(doc, None))
   }
 }
