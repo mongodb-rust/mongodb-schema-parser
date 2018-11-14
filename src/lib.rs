@@ -12,9 +12,27 @@ extern crate failure;
 // there is an attribute for test only imports
 use bson::{Bson, Document};
 
+use std::fs::{self, File};
+use std::io::prelude::*;
+use std::io::BufReader;
 use std::string::String;
+
 mod error;
 pub use error::{Error, ErrorKind, Result};
+
+pub struct SchemaParser {}
+
+impl SchemaParser {
+  pub fn new() -> Self {
+    unimplemented!()
+  }
+  pub fn write(json: &str) -> Result<()> {
+    unimplemented!()
+  }
+  pub fn flush() -> Document {
+    unimplemented!()
+  }
+}
 
 pub fn generate_schema_from_document(
   doc: Document,
@@ -85,6 +103,7 @@ fn add_to_types(value: Bson, path: String) -> Option<Document> {
         values.insert("name", bson::to_bson(&bson_type).unwrap());
         values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
       }
+      // add values item in array as a separate func;
       values.insert("values", bson::to_bson(&value).unwrap());
 
       Some(values)
@@ -109,6 +128,8 @@ fn add_to_types(value: Bson, path: String) -> Option<Document> {
 mod test {
   use super::generate_schema_from_document;
   use super::Bson;
+  use super::SchemaParser;
+  use std::fs;
 
   extern crate serde;
   extern crate serde_json;
@@ -144,12 +165,18 @@ mod test {
     println!("{}", generate_schema_from_document(doc, None));
   }
 
+  #[test]
   fn json_file_gen() {
-    let mut json: serde_json::Value =
-      serde_json::from_str("../examples/fanclub.json")
-        .expect("JSON File not well formatted");
+    // let mut json: serde_json::Value =
+    //   serde_json::from_str("../examples/fanclub.json")
+    //     .expect("JSON File not well formatted");
 
-    let doc = Bson::from_json(json);
-    println!("{}", generate_schema_from_document(doc, None))
+    let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
+    let file: Vec<&str> = file.split("\n").collect();
+    let schema_parser = SchemaParser::new();
+    for json in file {
+      schema_parser::write(&json);
+    }
+    let result = schema_parser::flush();
   }
 }
