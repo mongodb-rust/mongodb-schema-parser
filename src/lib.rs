@@ -70,18 +70,6 @@ fn add_type(value: &Bson) -> Option<&str> {
   }
 }
 
-fn add_value(value: &Bson) -> Option<&str> {
-  match value {
-    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
-    Bson::Document(_) => Some("Document"),
-    Bson::Boolean(_) => Some("Boolean"),
-    Bson::String(_) => Some("String"),
-    Bson::Array(_) => Some("Array"),
-    Bson::Null => Some("Null"),
-    _ => None,
-  }
-}
-
 fn add_to_types(value: Bson, path: String) -> Option<Document> {
   let bson_type = add_type(&value);
   let match_value = value.clone();
@@ -90,8 +78,16 @@ fn add_to_types(value: Bson, path: String) -> Option<Document> {
       Some(generate_schema_from_document(subdoc, Some(path)))
     }
     Bson::Array(_) => {
-      let mut subarray = doc!{};
-      Some(subarray)
+      let mut values = doc!{
+        "path": &path,
+      };
+      if let Some(bson_type) = bson_type {
+        values.insert("name", bson::to_bson(&bson_type).unwrap());
+        values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
+      }
+      values.insert("values", bson::to_bson(&value).unwrap());
+
+      Some(values)
     }
     _ => {
       let mut values = doc!{
@@ -103,6 +99,7 @@ fn add_to_types(value: Bson, path: String) -> Option<Document> {
       }
       let val = vec![&value];
       values.insert("values", bson::to_bson(&val).unwrap());
+
       Some(values)
     }
   }
