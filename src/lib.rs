@@ -8,29 +8,46 @@
 extern crate bson;
 #[macro_use]
 extern crate failure;
+extern crate serde_json;
+use serde_json::Value;
 
-// there is an attribute for test only imports
 use bson::{Bson, Document};
-
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::io::BufReader;
 use std::string::String;
 
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
 pub struct SchemaParser {}
+// pub struct SchemaParser {
+//   count: i64,
+//   fields: Vec<Document>,
+// }
 
 impl SchemaParser {
   pub fn new() -> Self {
-    unimplemented!()
+    //let doc = doc! {
+    //  "name": "",
+    //  "path": "",
+    //};
+    //SchemaParser {
+    //  count: 0,
+    //  fields: vec![doc],
+    //}
+    SchemaParser {}
   }
-  pub fn write(json: &str) -> Result<()> {
-    unimplemented!()
+  pub fn write(&mut self, json: &str) -> Result<()> {
+    // define a global bson document to have the basic information
+    // start document count
+    // call generate schema from document
+    let val: Value = serde_json::from_str(json).unwrap();
+    let bson = Bson::from(val);
+    let doc = bson.as_document().unwrap().to_owned();
+    let fields = generate_schema_from_document(doc, None);
+    Ok(())
   }
-  pub fn flush() -> Document {
-    unimplemented!()
+  pub fn flush(&mut self) -> Document {
+    // return the created struct, convert it to bson
+    unimplemented!();
   }
 }
 
@@ -71,7 +88,6 @@ pub fn generate_schema_from_document(
   }
 
   doc! {
-    "count": count as i64,
     "fields": fields
   }
 }
@@ -127,12 +143,8 @@ fn add_to_types(value: Bson, path: String) -> Option<Document> {
 #[cfg(test)]
 mod test {
   use super::generate_schema_from_document;
-  use super::Bson;
   use super::SchemaParser;
   use std::fs;
-
-  extern crate serde;
-  extern crate serde_json;
 
   #[test]
   fn simple_schema_gen() {
@@ -167,16 +179,12 @@ mod test {
 
   #[test]
   fn json_file_gen() {
-    // let mut json: serde_json::Value =
-    //   serde_json::from_str("../examples/fanclub.json")
-    //     .expect("JSON File not well formatted");
-
     let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
     let file: Vec<&str> = file.split("\n").collect();
     let schema_parser = SchemaParser::new();
-    for json in file {
-      schema_parser::write(&json);
+    for mut json in file {
+      schema_parser.write(&mut json);
     }
-    let result = schema_parser::flush();
+    let result = schema_parser.flush();
   }
 }
