@@ -18,27 +18,12 @@ mod error;
 pub use error::{Error, ErrorKind, Result};
 
 pub struct SchemaParser {}
-// pub struct SchemaParser {
-//   count: i64,
-//   fields: Vec<Document>,
-// }
 
 impl SchemaParser {
   pub fn new() -> Self {
-    //let doc = doc! {
-    //  "name": "",
-    //  "path": "",
-    //};
-    //SchemaParser {
-    //  count: 0,
-    //  fields: vec![doc],
-    //}
     SchemaParser {}
   }
   pub fn write(&mut self, json: &str) -> Result<()> {
-    // define a global bson document to have the basic information
-    // start document count
-    // call generate schema from document
     let val: Value = serde_json::from_str(json).unwrap();
     let bson = Bson::from(val);
     let doc = bson.as_document().unwrap().to_owned();
@@ -46,7 +31,6 @@ impl SchemaParser {
     Ok(())
   }
   pub fn flush(&mut self) -> Document {
-    // return the created struct, convert it to bson
     unimplemented!();
   }
 }
