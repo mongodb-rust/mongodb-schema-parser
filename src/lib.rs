@@ -15,14 +15,13 @@ extern crate serde_json;
 use serde_json::Value;
 
 use bson::{Bson, Document};
-use std::collections::HashMap;
 use std::mem;
 use std::string::String;
 
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct SchemaParser {
   count: i64,
   fields: Vec<Document>,
@@ -42,8 +41,8 @@ impl SchemaParser {
     let doc = bson.as_document().unwrap().to_owned();
     let count = &self.count + 1;
     mem::replace(&mut self.count, count);
-    let fields = generate_schema_from_document(doc, None);
-    println!("{:?}", count);
+    let fields = self.generate_field(doc, &None);
+    println!("{:?}", fields);
     Ok(())
   }
 
@@ -51,9 +50,12 @@ impl SchemaParser {
     unimplemented!();
   }
 
-  fn generate_field(&mut self, doc: Document, path: Option<String>) -> &mut Self {
-    let count = doc.len();
-    let mut fields = vec![];
+  fn generate_field(
+    &mut self,
+    doc: Document,
+    path: &Option<String>,
+  ) -> &mut Self {
+    let count = 0;
 
     for (key, value) in doc {
       let current_path = match &path {
@@ -68,122 +70,121 @@ impl SchemaParser {
 
       let mut value_doc = doc! {
         "name": &key,
-        "count": count as i64,
+        "count": count,
         "path": &current_path,
       };
 
       let mut types = vec![];
 
-      let value_type = add_to_types(value, current_path);
+      let value_type = self.add_to_types(value, current_path);
 
       if let Some(value_type) = value_type {
         types.push(bson::to_bson(&value_type).unwrap());
         value_doc.insert("types", types);
       }
 
-      fields.push(Bson::Document(value_doc));
+      self.fields.push(value_doc);
     }
-    mem::replace(&self.fields, fields)
+    self
   }
 
-  fn generate_type(&mut self, )
-}
-
-pub fn generate_schema_from_document(
-  doc: Document,
-  path: Option<String>,
-) -> Document {
-}
-
-fn add_type(value: &Bson) -> Option<&str> {
-  match value {
-    Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
-    Bson::Document(_) => Some("Document"),
-    Bson::Boolean(_) => Some("Boolean"),
-    Bson::String(_) => Some("String"),
-    Bson::Array(_) => Some("Array"),
-    Bson::Null => Some("Null"),
-    _ => None,
+  fn add_type(&mut self, value: &Bson) -> Option<&str> {
+    match value {
+      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
+      Bson::Document(_) => Some("Document"),
+      Bson::Boolean(_) => Some("Boolean"),
+      Bson::String(_) => Some("String"),
+      Bson::Array(_) => Some("Array"),
+      Bson::Null => Some("Null"),
+      _ => None,
+    }
   }
-}
 
-fn add_to_types(value: Bson, path: String) -> Option<Document> {
-  let bson_type = add_type(&value);
-  let match_value = value.clone();
-  match match_value {
-    Bson::Document(subdoc) => {
-      Some(generate_schema_from_document(subdoc, Some(path)))
-    }
-    Bson::Array(_) => {
-      let mut values = doc!{
-        "path": &path,
-      };
-      if let Some(bson_type) = bson_type {
-        values.insert("name", bson::to_bson(&bson_type).unwrap());
-        values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
+  fn add_to_types(&mut self, value: Bson, path: String) -> Option<Document> {
+    let match_value = value.clone();
+    match match_value {
+      Bson::Document(subdoc) => {
+        let doc = self.generate_field(subdoc, &Some(path));
+        let bson = bson::to_bson(doc).unwrap();
+        let bson_doc = bson.as_document();
+        if let Some(bson_doc) = bson_doc {
+          Some(bson_doc.to_owned())
+        } else {
+          None
+        }
       }
-      // add values item in array as a separate func;
-      values.insert("values", bson::to_bson(&value).unwrap());
+      Bson::Array(_) => {
+        let mut values = doc!{
+          "path": &path,
+        };
+        let bson_type = &mut self.add_type(&value);
+        if let Some(bson_type) = bson_type {
+          values.insert("name", bson::to_bson(&bson_type).unwrap());
+          values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
+        }
+        // add values item in array as a separate func;
+        values.insert("values", bson::to_bson(&value).unwrap());
 
-      Some(values)
-    }
-    _ => {
-      let mut values = doc!{
-        "path": &path,
-      };
-      if let Some(bson_type) = bson_type {
-        values.insert("name", bson::to_bson(&bson_type).unwrap());
-        values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
+        Some(values)
       }
-      let val = vec![&value];
-      values.insert("values", bson::to_bson(&val).unwrap());
+      _ => {
+        let mut values = doc!{
+          "path": &path,
+        };
+        let bson_type = &mut self.add_type(&value);
+        if let Some(bson_type) = bson_type {
+          values.insert("name", bson::to_bson(&bson_type).unwrap());
+          values.insert("bsonType", bson::to_bson(&bson_type).unwrap());
+        }
+        let val = vec![&value];
+        values.insert("values", bson::to_bson(&val).unwrap());
 
-      Some(values)
+        Some(values)
+      }
     }
   }
 }
 
 #[cfg(test)]
 mod test {
-  use super::generate_schema_from_document;
   use super::SchemaParser;
   use std::fs;
 
-  #[test]
-  fn simple_schema_gen() {
-    let doc = doc! {
-      "_id": {
-        "$oid": "50319491fe4dce143835c552"
-      },
-      "membership_status": "ACTIVE",
-      "name": "Ellie J Clarke",
-      "gender": "male",
-      "age": 36,
-      "phone_no": "+19786213180",
-      "last_login": {
-        "$date": "2014-01-31T22:26:33.000Z"
-      },
-      "address": {
-        "city": "El Paso, Texas",
-        "street": "133 Aloha Ave",
-        "postal_code": 50017,
-        "country": "USA",
-        "location": {
-          "type": "Point",
-          "coordinates":[-73.4446279457308,40.89674015263909]
-        }
-      },
-      "favorite_feature": "Auth",
-      "email": "corefinder88@hotmail.com"
-    };
+  // #[test]
+  // fn simple_schema_gen() {
+  //   let doc = doc! {
+  //     "_id": {
+  //       "$oid": "50319491fe4dce143835c552"
+  //     },
+  //     "membership_status": "ACTIVE",
+  //     "name": "Ellie J Clarke",
+  //     "gender": "male",
+  //     "age": 36,
+  //     "phone_no": "+19786213180",
+  //     "last_login": {
+  //       "$date": "2014-01-31T22:26:33.000Z"
+  //     },
+  //     "address": {
+  //       "city": "El Paso, Texas",
+  //       "street": "133 Aloha Ave",
+  //       "postal_code": 50017,
+  //       "country": "USA",
+  //       "location": {
+  //         "type": "Point",
+  //         "coordinates":[-73.4446279457308,40.89674015263909]
+  //       }
+  //     },
+  //     "favorite_feature": "Auth",
+  //     "email": "corefinder88@hotmail.com"
+  //   };
 
-    println!("{}", generate_schema_from_document(doc, None));
-  }
+  //   println!("{}", generate_schema_from_document(doc, None));
+  // }
 
   #[test]
   fn json_file_gen() {
     let file = fs::read_to_string("examples/fanclub.json").unwrap();
-    let file: Vec<&str> = file.split("\n").collect();
+    let file: Vec<&str> = file.split('\n').collect();
     let mut schema_parser = SchemaParser::new();
     for mut json in file {
       schema_parser.write(&json).unwrap();
