@@ -6,74 +6,93 @@
 
 #[macro_use]
 extern crate bson;
-#[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate serde_json;
+
 use serde_json::Value;
 
 use bson::{Bson, Document};
+use std::collections::HashMap;
+use std::mem;
 use std::string::String;
 
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
-pub struct SchemaParser {}
+#[derive(Serialize)]
+pub struct SchemaParser {
+  count: i64,
+  fields: Vec<Document>,
+}
 
 impl SchemaParser {
   pub fn new() -> Self {
-    SchemaParser {}
+    SchemaParser {
+      count: 0,
+      fields: vec![Document::new()],
+    }
   }
+
   pub fn write(&mut self, json: &str) -> Result<()> {
     let val: Value = serde_json::from_str(json).unwrap();
     let bson = Bson::from(val);
     let doc = bson.as_document().unwrap().to_owned();
+    let count = &self.count + 1;
+    mem::replace(&mut self.count, count);
     let fields = generate_schema_from_document(doc, None);
+    println!("{:?}", count);
     Ok(())
   }
-  pub fn flush(&mut self) -> Document {
+
+  pub fn flush(&mut self) -> Option<&Document> {
     unimplemented!();
   }
+
+  fn generate_field(&mut self, doc: Document, path: Option<String>) -> &mut Self {
+    let count = doc.len();
+    let mut fields = vec![];
+
+    for (key, value) in doc {
+      let current_path = match &path {
+        None => key.clone(),
+        Some(path) => {
+          let mut path = path.clone();
+          path.push_str(".");
+          path.push_str(&key);
+          path
+        }
+      };
+
+      let mut value_doc = doc! {
+        "name": &key,
+        "count": count as i64,
+        "path": &current_path,
+      };
+
+      let mut types = vec![];
+
+      let value_type = add_to_types(value, current_path);
+
+      if let Some(value_type) = value_type {
+        types.push(bson::to_bson(&value_type).unwrap());
+        value_doc.insert("types", types);
+      }
+
+      fields.push(Bson::Document(value_doc));
+    }
+    mem::replace(&self.fields, fields)
+  }
+
+  fn generate_type(&mut self, )
 }
 
 pub fn generate_schema_from_document(
   doc: Document,
   path: Option<String>,
 ) -> Document {
-  let count = doc.len();
-
-  let mut fields = vec![];
-
-  for (key, value) in doc {
-    let current_path = match &path {
-      None => key.clone(),
-      Some(path) => {
-        let mut path = path.clone();
-        path.push_str(".");
-        path.push_str(&key);
-        path
-      }
-    };
-
-    let mut value_doc = doc! {
-      "name": &key,
-      "path": &current_path,
-    };
-
-    let mut types = vec![];
-
-    let value_type = add_to_types(value, current_path);
-
-    if let Some(value_type) = value_type {
-      types.push(bson::to_bson(&value_type).unwrap());
-      value_doc.insert("types", types);
-    }
-
-    fields.push(Bson::Document(value_doc));
-  }
-
-  doc! {
-    "fields": fields
-  }
 }
 
 fn add_type(value: &Bson) -> Option<&str> {
@@ -163,12 +182,11 @@ mod test {
 
   #[test]
   fn json_file_gen() {
-    let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
+    let file = fs::read_to_string("examples/fanclub.json").unwrap();
     let file: Vec<&str> = file.split("\n").collect();
-    let schema_parser = SchemaParser::new();
+    let mut schema_parser = SchemaParser::new();
     for mut json in file {
-      schema_parser.write(&mut json);
+      schema_parser.write(&json).unwrap();
     }
-    let result = schema_parser.flush();
   }
 }
