@@ -21,40 +21,57 @@ use std::string::String;
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
-#[derive(Serialize, Debug)]
-pub struct SchemaParser {
+#[derive(Serialize, Debug, Clone)]
+pub struct SchemaParser<T> {
   count: i64,
-  fields: Vec<Document>,
+  fields: Option<Vec<Field<T>>>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+struct Field<T> {
+  name: String,
+  path: String,
+  count: usize,
+  field_type: String,
+  probability: Option<f64>,
+  has_duplicates: Option<bool>,
+  types: Option<Vec<FieldType<T>>>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+struct FieldType<T> {
+  name: String,
+  path: String,
+  count: usize,
+  probability: Option<f64>,
+  values: Vec<T>,
+  has_duplicates: Option<bool>,
+  unique: Option<usize>,
 }
 
 impl SchemaParser {
   pub fn new() -> Self {
     SchemaParser {
       count: 0,
-      fields: vec![Document::new()],
+      fields: None,
     }
   }
 
-  pub fn write(&mut self, json: &str) -> Result<()> {
+  pub fn write(&self, json: &str) -> Result<()> {
     let val: Value = serde_json::from_str(json).unwrap();
     let bson = Bson::from(val);
     let doc = bson.as_document().unwrap().to_owned();
     let count = &self.count + 1;
     mem::replace(&mut self.count, count);
     let fields = self.generate_field(doc, &None);
-    println!("{:?}", fields);
     Ok(())
   }
 
-  pub fn flush(&mut self) -> Option<&Document> {
+  pub fn flush(&self) -> Option<&Document> {
     unimplemented!();
   }
 
-  fn generate_field(
-    &mut self,
-    doc: Document,
-    path: &Option<String>,
-  ) -> &mut Self {
+  fn generate_field(&self, doc: Document, path: &Option<String>) -> &mut Self {
     let count = 0;
 
     for (key, value) in doc {
@@ -75,34 +92,19 @@ impl SchemaParser {
       };
 
       let mut types = vec![];
-
       let value_type = self.add_to_types(value, current_path);
 
       if let Some(value_type) = value_type {
         types.push(bson::to_bson(&value_type).unwrap());
         value_doc.insert("types", types);
       }
-
       self.fields.push(value_doc);
     }
     self
   }
 
-  fn add_type(&mut self, value: &Bson) -> Option<&str> {
-    match value {
-      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
-      Bson::Document(_) => Some("Document"),
-      Bson::Boolean(_) => Some("Boolean"),
-      Bson::String(_) => Some("String"),
-      Bson::Array(_) => Some("Array"),
-      Bson::Null => Some("Null"),
-      _ => None,
-    }
-  }
-
   fn add_to_types(&mut self, value: Bson, path: String) -> Option<Document> {
-    let match_value = value.clone();
-    match match_value {
+    match value {
       Bson::Document(subdoc) => {
         let doc = self.generate_field(subdoc, &Some(path));
         let bson = bson::to_bson(doc).unwrap();
@@ -141,6 +143,18 @@ impl SchemaParser {
 
         Some(values)
       }
+    }
+  }
+
+  fn add_type(&mut self, value: &Bson) -> Option<&str> {
+    match value {
+      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => Some("Number"),
+      Bson::Document(_) => Some("Document"),
+      Bson::Boolean(_) => Some("Boolean"),
+      Bson::String(_) => Some("String"),
+      Bson::Array(_) => Some("Array"),
+      Bson::Null => Some("Null"),
+      _ => None,
     }
   }
 }
