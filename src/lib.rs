@@ -108,8 +108,8 @@ impl SchemaParser {
     Ok(())
   }
 
-  pub fn flush(self) -> Self {
-    self
+  pub fn flush(self) -> String {
+    serde_json::to_string(&self).unwrap()
   }
 
   fn generate_field(&mut self, doc: Document, path: &Option<String>) -> &Self {
@@ -257,6 +257,7 @@ mod test {
     let file: Vec<&str> = file.split('\n').collect();
     let mut schema_parser = SchemaParser::new();
     for mut json in file {
+      // this panics i think ?
       schema_parser.write(&json).unwrap();
     }
     let schema = schema_parser.flush();
