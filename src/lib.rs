@@ -105,6 +105,7 @@ impl SchemaParser {
   pub fn write(&mut self, json: &str) -> Result<()> {
     let val: Value = serde_json::from_str(json)?;
     let bson = Bson::from(val);
+    // should do a match for NoneError
     let doc = bson.as_document().unwrap().to_owned();
     let count = &self.count + 1;
     mem::replace(&mut self.count, count);
@@ -112,8 +113,8 @@ impl SchemaParser {
     Ok(())
   }
 
-  pub fn flush(self) -> String {
-    serde_json::to_string(&self).unwrap()
+  pub fn flush(self) -> Result<String> {
+    Ok(serde_json::to_string(&self)?)
   }
 
   fn generate_field(&mut self, doc: Document, path: &Option<String>) -> &Self {
