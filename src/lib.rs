@@ -92,6 +92,10 @@ impl FieldType {
   fn set_values(&mut self, values: Vec<ValueType>) {
     self.values = values
   }
+
+  fn push_value(&mut self, value: ValueType) {
+    self.values.push(value)
+  }
 }
 
 impl SchemaParser {
@@ -113,11 +117,11 @@ impl SchemaParser {
     Ok(())
   }
 
-  pub fn flush(self) -> Result<String> {
+  pub fn to_json(self) -> Result<String> {
     Ok(serde_json::to_string(&self)?)
   }
 
-  fn generate_field(&mut self, doc: Document, path: &Option<String>) -> &Self {
+  fn generate_field(&mut self, doc: Document, path: &Option<String>) {
     let count = 0;
 
     for (key, value) in doc {
@@ -131,6 +135,23 @@ impl SchemaParser {
         }
       };
 
+      // check if we already have a field for this key;
+      // this check should also be checking for uniqueness
+      'inner: for mut field in &mut self.fields {
+        if field.name == key {
+          // need to seet count here as well
+          for mut field_type in &mut field.types {
+            let field_count = field_type.count + 1;
+            field_type.set_count(field_count);
+            let value_type = Self::get_type(&value);
+            if let Some(value_type) = value_type {
+              field_type.push_value(value_type);
+            }
+          }
+          break 'inner;
+        }
+      }
+
       let mut field = Field {
         name: key.clone(),
         count: count,
@@ -141,16 +162,22 @@ impl SchemaParser {
         types: Vec::new(),
       };
 
-      let field_type = &self.add_to_types(value, current_path);
+      let mut value_vec = Vec::new();
+
+      let field_type = &self.add_to_types(value, current_path, value_vec);
       if let Some(field_type) = field_type {
         field.types.push(field_type.to_owned());
       }
       self.fields.push(field);
     }
-    self
   }
 
-  fn add_to_types(&mut self, value: Bson, path: String) -> Option<FieldType> {
+  fn add_to_types(
+    &mut self,
+    value: Bson,
+    path: String,
+    mut value_vec: Vec<ValueType>,
+  ) -> Option<FieldType> {
     let bson_value = value.clone();
     match value {
       Bson::Document(subdoc) => {
@@ -163,33 +190,33 @@ impl SchemaParser {
         field_type.set_name(bson_type.clone());
         field_type.set_bson_type(bson_type.clone());
         // add values item in array as a separate func;
-        let mut value_type_vec = Vec::new();
         for val in arr.iter() {
-          let value_type = self.get_type(val);
+          let value_type = Self::get_type(val);
 
           if let Some(value_type) = value_type {
-            value_type_vec.push(value_type)
+            value_vec.push(value_type)
           }
         }
-        field_type.set_values(value_type_vec);
+        field_type.set_values(value_vec);
         Some(field_type)
       }
       _ => {
         let mut field_type = FieldType::new(path.clone());
-        let value_type = self.get_type(&bson_value);
+        let value_type = Self::get_type(&bson_value);
         let bson_type = self.set_type(&bson_value);
         field_type.set_name(bson_type.clone());
         field_type.set_bson_type(bson_type.clone());
         // add values item in array as a separate func;
         if let Some(value_type) = value_type {
-          field_type.set_values(vec![value_type]);
+          value_vec.push(value_type);
+          field_type.set_values(value_vec);
         }
         Some(field_type)
       }
     }
   }
 
-  fn get_type(&self, value: &Bson) -> Option<ValueType> {
+  fn get_type(value: &Bson) -> Option<ValueType> {
     match value {
       Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
       Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
@@ -252,22 +279,20 @@ mod test {
     let mut schema_parser = SchemaParser::new();
     schema_parser.write(doc).unwrap();
 
-    let schema = schema_parser.flush();
-
-    println!("{:?}", schema);
+    schema_parser.to_json();
   }
 
   #[test]
   fn json_file_gen() -> Result<(), Error> {
+    // TODO: check timing on running this test
     let file = fs::read_to_string("examples/fanclub.json")?;
     let vec: Vec<&str> = file.trim().split('\n').collect();
-    println!("{:?}", vec);
     let mut schema_parser = SchemaParser::new();
     for mut json in vec {
       // this panics i think ?
       schema_parser.write(&json)?;
     }
-    let schema = schema_parser.flush();
+    let schema = schema_parser.to_json();
     println!("{:?}", schema);
     Ok(())
   }
