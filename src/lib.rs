@@ -15,19 +15,23 @@ extern crate serde_json;
 use serde_json::Value;
 
 use bson::{Bson, Document};
+use failure::Error;
 use std::mem;
 use std::string::String;
 
-mod error;
-pub use error::{Error, ErrorKind, Result};
+// mod error;
+// pub use error::{Error, ErrorKind, Result};
+/// Custom Result type
 
-#[derive(Serialize, Debug, Clone)]
+pub type Result<T> = std::result::Result<T, failure::Error>;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SchemaParser {
   count: i64,
   fields: Vec<Field>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Field {
   name: String,
   path: String,
@@ -38,7 +42,7 @@ struct Field {
   types: Vec<FieldType>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct FieldType {
   name: Option<String>,
   path: String,
@@ -50,7 +54,7 @@ struct FieldType {
   unique: Option<usize>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 enum ValueType {
   Str(String),
   I32(i32),
@@ -99,7 +103,7 @@ impl SchemaParser {
   }
 
   pub fn write(&mut self, json: &str) -> Result<()> {
-    let val: Value = serde_json::from_str(json).unwrap();
+    let val: Value = serde_json::from_str(json)?;
     let bson = Bson::from(val);
     let doc = bson.as_document().unwrap().to_owned();
     let count = &self.count + 1;
@@ -213,6 +217,7 @@ impl SchemaParser {
 #[cfg(test)]
 mod test {
   use super::SchemaParser;
+  use failure::Error;
   use std::fs;
 
   #[test]
@@ -252,15 +257,17 @@ mod test {
   }
 
   #[test]
-  fn json_file_gen() {
-    let file = fs::read_to_string("examples/fanclub.json").unwrap();
-    let file: Vec<&str> = file.split('\n').collect();
+  fn json_file_gen() -> Result<(), Error> {
+    let file = fs::read_to_string("examples/fanclub.json")?;
+    let vec: Vec<&str> = file.trim().split('\n').collect();
+    println!("{:?}", vec);
     let mut schema_parser = SchemaParser::new();
-    for mut json in file {
+    for mut json in vec {
       // this panics i think ?
-      schema_parser.write(&json).unwrap();
+      schema_parser.write(&json)?;
     }
     let schema = schema_parser.flush();
-    println!("{:?}", schema)
+    println!("{:?}", schema);
+    Ok(())
   }
 }
