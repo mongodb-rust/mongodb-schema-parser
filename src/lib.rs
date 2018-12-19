@@ -63,6 +63,32 @@ enum ValueType {
   Boolean(bool),
 }
 
+impl Field {
+  fn new(name: String, path: String, count: usize) -> Self {
+    Field {
+      name: name.clone(),
+      count: count,
+      path: path,
+      field_type: None,
+      probability: None,
+      has_duplicates: None,
+      types: Vec::new(),
+    }
+  }
+
+  fn get_path(name: String, path: &Option<String>) -> String {
+    match &path {
+      None => name.clone(),
+      Some(path) => {
+        let mut path = path.clone();
+        path.push_str(".");
+        path.push_str(&name);
+        path
+      }
+    }
+  }
+}
+
 impl FieldType {
   fn new(path: String) -> Self {
     FieldType {
@@ -74,6 +100,68 @@ impl FieldType {
       values: Vec::new(),
       has_duplicates: None,
       unique: None,
+    }
+  }
+
+  fn add_to_type(
+    mut self,
+    value: &Bson,
+    mut value_vec: Vec<ValueType>,
+  ) -> Option<Self> {
+    let bson_value = value.clone();
+    match value {
+      Bson::Array(arr) => {
+        let bson_type = Self::get_type(&bson_value);
+        self.set_name(bson_type.clone());
+        self.set_bson_type(bson_type.clone());
+        // add values item in array as a separate func;
+        for val in arr.iter() {
+          let value_type = Self::get_value(val);
+
+          if let Some(value_type) = value_type {
+            value_vec.push(value_type)
+          }
+        }
+        self.set_values(value_vec);
+        Some(self)
+      }
+      _ => {
+        let value_type = Self::get_value(&bson_value);
+        let bson_type = Self::get_type(&bson_value);
+        self.set_name(bson_type.clone());
+        self.set_bson_type(bson_type.clone());
+        // add values item in array as a separate func;
+        if let Some(value_type) = value_type {
+          value_vec.push(value_type);
+          self.set_values(value_vec);
+        }
+        Some(self)
+      }
+    }
+  }
+
+  fn get_value(value: &Bson) -> Option<ValueType> {
+    match value {
+      Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
+      Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
+      Bson::String(string) => Some(ValueType::Str(string.to_string())),
+      Bson::I32(num) => Some(ValueType::I32(*num)),
+      Bson::I64(num) => Some(ValueType::I64(*num)),
+      _ => None,
+    }
+  }
+
+  fn get_type(value: &Bson) -> Option<String> {
+    match value {
+      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => {
+        Some(String::from("Number"))
+      }
+      Bson::Document(_) => Some(String::from("Document")),
+      Bson::Boolean(_) => Some(String::from("Boolean")),
+      Bson::String(_) => Some(String::from("String")),
+      Bson::Array(_) => Some(String::from("Array")),
+      Bson::Null => Some(String::from("Null")),
+      _ => None,
     }
   }
 
@@ -125,119 +213,42 @@ impl SchemaParser {
     let count = 0;
 
     for (key, value) in doc {
-      let current_path = match &path {
-        None => key.clone(),
-        Some(path) => {
-          let mut path = path.clone();
-          path.push_str(".");
-          path.push_str(&key);
-          path
-        }
-      };
-
       // check if we already have a field for this key;
       // this check should also be checking for uniqueness
-      'inner: for mut field in &mut self.fields {
+      // 'inner:
+      for mut field in &mut self.fields {
         if field.name == key {
           // need to seet count here as well
+          println!("key: {}", field.name);
           for mut field_type in &mut field.types {
             let field_count = field_type.count + 1;
             field_type.set_count(field_count);
-            let value_type = Self::get_type(&value);
+            let value_type = FieldType::get_value(&value);
             if let Some(value_type) = value_type {
               field_type.push_value(value_type);
             }
           }
-          break 'inner;
+        // break 'inner;
+        } else {
+          let current_path = Field::get_path(key.clone(), path);
+          let mut field = Field::new(key.clone(), &current_path, count);
+          let mut value_vec = Vec::new();
+
+          match &value {
+            Bson::Document(subdoc) => {
+              self.generate_field(subdoc.to_owned(), &Some(current_path));
+            }
+            _ => {
+              let field_type =
+                FieldType::new(current_path).add_to_type(&value, value_vec);
+              if let Some(field_type) = field_type {
+                field.types.push(field_type.to_owned());
+              }
+            }
+          };
+          self.fields.push(field);
         }
       }
-
-      let mut field = Field {
-        name: key.clone(),
-        count: count,
-        path: current_path.clone(),
-        field_type: None,
-        probability: None,
-        has_duplicates: None,
-        types: Vec::new(),
-      };
-
-      let mut value_vec = Vec::new();
-
-      let field_type = &self.add_to_types(value, current_path, value_vec);
-      if let Some(field_type) = field_type {
-        field.types.push(field_type.to_owned());
-      }
-      self.fields.push(field);
-    }
-  }
-
-  fn add_to_types(
-    &mut self,
-    value: Bson,
-    path: String,
-    mut value_vec: Vec<ValueType>,
-  ) -> Option<FieldType> {
-    let bson_value = value.clone();
-    match value {
-      Bson::Document(subdoc) => {
-        self.generate_field(subdoc, &Some(path));
-        None
-      }
-      Bson::Array(arr) => {
-        let mut field_type = FieldType::new(path.clone());
-        let bson_type = self.set_type(&bson_value);
-        field_type.set_name(bson_type.clone());
-        field_type.set_bson_type(bson_type.clone());
-        // add values item in array as a separate func;
-        for val in arr.iter() {
-          let value_type = Self::get_type(val);
-
-          if let Some(value_type) = value_type {
-            value_vec.push(value_type)
-          }
-        }
-        field_type.set_values(value_vec);
-        Some(field_type)
-      }
-      _ => {
-        let mut field_type = FieldType::new(path.clone());
-        let value_type = Self::get_type(&bson_value);
-        let bson_type = self.set_type(&bson_value);
-        field_type.set_name(bson_type.clone());
-        field_type.set_bson_type(bson_type.clone());
-        // add values item in array as a separate func;
-        if let Some(value_type) = value_type {
-          value_vec.push(value_type);
-          field_type.set_values(value_vec);
-        }
-        Some(field_type)
-      }
-    }
-  }
-
-  fn get_type(value: &Bson) -> Option<ValueType> {
-    match value {
-      Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
-      Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
-      Bson::String(string) => Some(ValueType::Str(string.to_string())),
-      Bson::I32(num) => Some(ValueType::I32(*num)),
-      Bson::I64(num) => Some(ValueType::I64(*num)),
-      _ => None,
-    }
-  }
-
-  fn set_type(&mut self, value: &Bson) -> Option<String> {
-    match value {
-      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => {
-        Some(String::from("Number"))
-      }
-      Bson::Document(_) => Some(String::from("Document")),
-      Bson::Boolean(_) => Some(String::from("Boolean")),
-      Bson::String(_) => Some(String::from("String")),
-      Bson::Array(_) => Some(String::from("Array")),
-      Bson::Null => Some(String::from("Null")),
-      _ => None,
     }
   }
 }
@@ -293,7 +304,7 @@ mod test {
       schema_parser.write(&json)?;
     }
     let schema = schema_parser.to_json();
-    println!("{:?}", schema);
+    // println!("{:?}", schema);
     Ok(())
   }
 }
