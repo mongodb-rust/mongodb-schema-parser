@@ -76,6 +76,12 @@ impl Field {
     }
   }
 
+  fn add_to_types(&mut self, field_type: Option<FieldType>) {
+    if let Some(field_type) = field_type {
+      self.types.push(field_type)
+    }
+  }
+
   fn get_path(name: String, path: &Option<String>) -> String {
     match &path {
       None => name.clone(),
@@ -103,12 +109,10 @@ impl FieldType {
     }
   }
 
-  fn add_to_type(
-    mut self,
-    value: &Bson,
-    mut value_vec: Vec<ValueType>,
-  ) -> Option<Self> {
+  fn add_to_type(mut self, value: &Bson) -> Option<Self> {
     let bson_value = value.clone();
+    let mut value_vec = Vec::new();
+
     match value {
       Bson::Array(arr) => {
         let bson_type = Self::get_type(&bson_value);
@@ -173,8 +177,8 @@ impl FieldType {
     self.bsonType = bsontype
   }
 
-  fn set_count(&mut self, count: usize) {
-    self.count = count
+  fn update_count(&mut self) {
+    self.count = self.count + 1
   }
 
   fn set_values(&mut self, values: Vec<ValueType>) {
@@ -218,11 +222,9 @@ impl SchemaParser {
       // 'inner:
       for mut field in &mut self.fields {
         if field.name == key {
-          // need to seet count here as well
-          println!("key: {}", field.name);
+          // need to set count here as well
           for mut field_type in &mut field.types {
-            let field_count = field_type.count + 1;
-            field_type.set_count(field_count);
+            field_type.update_count();
             let value_type = FieldType::get_value(&value);
             if let Some(value_type) = value_type {
               field_type.push_value(value_type);
@@ -231,19 +233,15 @@ impl SchemaParser {
         // break 'inner;
         } else {
           let current_path = Field::get_path(key.clone(), path);
-          let mut field = Field::new(key.clone(), &current_path, count);
-          let mut value_vec = Vec::new();
+          let mut field = Field::new(key.clone(), current_path.clone(), count);
 
           match &value {
             Bson::Document(subdoc) => {
               self.generate_field(subdoc.to_owned(), &Some(current_path));
             }
             _ => {
-              let field_type =
-                FieldType::new(current_path).add_to_type(&value, value_vec);
-              if let Some(field_type) = field_type {
-                field.types.push(field_type.to_owned());
-              }
+              let field_type = FieldType::new(current_path).add_to_type(&value);
+              field.add_to_types(field_type.to_owned());
             }
           };
           self.fields.push(field);
@@ -304,7 +302,7 @@ mod test {
       schema_parser.write(&json)?;
     }
     let schema = schema_parser.to_json();
-    // println!("{:?}", schema);
+    println!("{:?}", schema);
     Ok(())
   }
 }
