@@ -181,6 +181,13 @@ impl FieldType {
     self.count = self.count + 1
   }
 
+  fn update_value(&mut self, value: &Bson) {
+    let value_type = Self::get_value(&value);
+    if let Some(value_type) = value_type {
+      self.push_value(value_type)
+    }
+  }
+
   fn set_values(&mut self, values: Vec<ValueType>) {
     self.values = values
   }
@@ -213,6 +220,10 @@ impl SchemaParser {
     Ok(serde_json::to_string(&self)?)
   }
 
+  fn add_to_fields(&mut self, field: Field) {
+    self.fields.push(field)
+  }
+
   fn generate_field(&mut self, doc: Document, path: &Option<String>) {
     let count = 0;
 
@@ -225,12 +236,8 @@ impl SchemaParser {
           // need to set count here as well
           for mut field_type in &mut field.types {
             field_type.update_count();
-            let value_type = FieldType::get_value(&value);
-            if let Some(value_type) = value_type {
-              field_type.push_value(value_type);
-            }
+            field_type.update_value(&value);
           }
-        // break 'inner;
         } else {
           let current_path = Field::get_path(key.clone(), path);
           let mut field = Field::new(key.clone(), current_path.clone(), count);
@@ -244,7 +251,7 @@ impl SchemaParser {
               field.add_to_types(field_type.to_owned());
             }
           };
-          self.fields.push(field);
+          self.add_to_fields(field);
         }
       }
     }
