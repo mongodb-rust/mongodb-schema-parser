@@ -2,9 +2,9 @@
 #![cfg_attr(feature = "nightly", feature(external_doc))]
 #![cfg_attr(feature = "nightly", doc(include = "../README.md"))]
 #![cfg_attr(feature = "nightly", deny(unsafe_code))]
+#![allow(clippy::new_without_default_derive)]
 //#![cfg_attr(test, deny(warnings))]
 
-#[macro_use]
 extern crate bson;
 extern crate failure;
 #[macro_use]
@@ -15,7 +15,6 @@ extern crate serde_json;
 use serde_json::Value;
 
 use bson::{Bson, Document};
-use failure::Error;
 use std::mem;
 use std::string::String;
 
@@ -43,6 +42,7 @@ struct Field {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[allow(non_snake_case)]
 struct FieldType {
   name: Option<String>,
   path: String,
@@ -64,11 +64,11 @@ enum ValueType {
 }
 
 impl Field {
-  fn new(name: String, path: String, count: usize) -> Self {
+  fn new(name: &str, path: String, count: usize) -> Self {
     Field {
-      name: name.clone(),
-      count: count,
-      path: path,
+      name: name.to_string(),
+      count,
+      path,
       field_type: None,
       probability: None,
       has_duplicates: None,
@@ -84,7 +84,7 @@ impl Field {
 
   fn get_path(name: String, path: &Option<String>) -> String {
     match &path {
-      None => name.clone(),
+      None => name,
       Some(path) => {
         let mut path = path.clone();
         path.push_str(".");
@@ -99,7 +99,7 @@ impl FieldType {
   fn new(path: String) -> Self {
     FieldType {
       name: None,
-      path: path,
+      path,
       bsonType: None,
       count: 0,
       probability: None,
@@ -178,7 +178,7 @@ impl FieldType {
   }
 
   fn update_count(&mut self) {
-    self.count = self.count + 1
+    self.count += 1
   }
 
   fn update_value(&mut self, value: &Bson) {
@@ -216,7 +216,7 @@ impl SchemaParser {
     Ok(())
   }
 
-  pub fn to_json(self) -> Result<String> {
+  pub fn to_json(&self) -> Result<String> {
     Ok(serde_json::to_string(&self)?)
   }
 
@@ -260,7 +260,7 @@ impl SchemaParser {
       } else {
         // if name doesn't exist, proceed by this path and create a new field
         let current_path = Field::get_path(key.clone(), path);
-        let mut field = Field::new(key.clone(), current_path.clone(), count);
+        let mut field = Field::new(&key, current_path.clone(), count);
 
         match &value {
           Bson::Document(subdoc) => {
@@ -284,7 +284,7 @@ mod test {
   use std::fs;
 
   #[test]
-  fn simple_schema_gen() {
+  fn simple_schema_gen() -> Result<(), Error> {
     let doc = r#"{
       "_id": {
         "$oid": "50319491fe4dce143835c552"
@@ -312,9 +312,11 @@ mod test {
     }"#;
 
     let mut schema_parser = SchemaParser::new();
-    schema_parser.write(doc).unwrap();
+    schema_parser.write(doc)?;
 
-    schema_parser.to_json();
+    let schema = schema_parser.to_json();
+    println!("{:?}", schema);
+    Ok(())
   }
 
   #[test]
