@@ -1,15 +1,12 @@
 [package]
-name = "mongodb_schema"
+name = "mongodb-schema-parser"
 version = "0.1.0"
 license = "Apache-2.0"
-repository = "https://github.com/lrlna/mongodb-schema"
-documentation = "https://docs.rs/mongodb-schema"
+repository = "https://github.com/lrlna/mongodb-schema-parser"
+documentation = "https://docs.rs/mongodb-schema-parser"
 description = "MongoDB Schema Analysis"
 authors = ["Irina Shestak <shestak.irina@gmail.com>"]
 readme = "README.md"
-
-[lib]
-crate-type = ["cdylib"]
 
 [dependencies]
 failure = "0.1.2"
