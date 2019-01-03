@@ -18,10 +18,19 @@ use bson::{Bson, Document};
 use std::mem;
 use std::string::String;
 
+mod field;
+use field::Field;
+
+mod field_type;
+use field_type::FieldType;
+
+mod value_type;
+use value_type::ValueType;
+
 // mod error;
 // pub use error::{Error, ErrorKind, Result};
-/// Custom Result type
 
+/// Custom Result type
 pub type Result<T> = std::result::Result<T, failure::Error>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -29,174 +38,6 @@ pub struct SchemaParser {
   count: i64,
   fields: Vec<Field>,
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Field {
-  name: String,
-  path: String,
-  count: usize,
-  field_type: Option<String>,
-  probability: Option<f64>,
-  has_duplicates: Option<bool>,
-  types: Vec<FieldType>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[allow(non_snake_case)]
-struct FieldType {
-  name: Option<String>,
-  path: String,
-  count: usize,
-  bsonType: Option<String>,
-  probability: Option<f64>,
-  values: Vec<ValueType>,
-  has_duplicates: Option<bool>,
-  unique: Option<usize>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-enum ValueType {
-  Str(String),
-  I32(i32),
-  I64(i64),
-  FloatingPoint(f64),
-  Boolean(bool),
-}
-
-impl Field {
-  fn new(name: &str, path: String, count: usize) -> Self {
-    Field {
-      name: name.to_string(),
-      count,
-      path,
-      field_type: None,
-      probability: None,
-      has_duplicates: None,
-      types: Vec::new(),
-    }
-  }
-
-  fn add_to_types(&mut self, field_type: Option<FieldType>) {
-    if let Some(field_type) = field_type {
-      self.types.push(field_type)
-    }
-  }
-
-  fn get_path(name: String, path: &Option<String>) -> String {
-    match &path {
-      None => name,
-      Some(path) => {
-        let mut path = path.clone();
-        path.push_str(".");
-        path.push_str(&name);
-        path
-      }
-    }
-  }
-}
-
-impl FieldType {
-  fn new(path: String) -> Self {
-    FieldType {
-      name: None,
-      path,
-      bsonType: None,
-      count: 0,
-      probability: None,
-      values: Vec::new(),
-      has_duplicates: None,
-      unique: None,
-    }
-  }
-
-  fn add_to_type(mut self, value: &Bson) -> Option<Self> {
-    let bson_value = value.clone();
-    let mut value_vec = Vec::new();
-
-    match value {
-      Bson::Array(arr) => {
-        let bson_type = Self::get_type(&bson_value);
-        self.set_name(bson_type.clone());
-        self.set_bson_type(bson_type.clone());
-        // add values item in array as a separate func;
-        for val in arr.iter() {
-          let value_type = Self::get_value(val);
-
-          if let Some(value_type) = value_type {
-            value_vec.push(value_type)
-          }
-        }
-        self.set_values(value_vec);
-        Some(self)
-      }
-      _ => {
-        let value_type = Self::get_value(&bson_value);
-        let bson_type = Self::get_type(&bson_value);
-        self.set_name(bson_type.clone());
-        self.set_bson_type(bson_type.clone());
-        // add values item in array as a separate func;
-        if let Some(value_type) = value_type {
-          value_vec.push(value_type);
-          self.set_values(value_vec);
-        }
-        Some(self)
-      }
-    }
-  }
-
-  fn get_value(value: &Bson) -> Option<ValueType> {
-    match value {
-      Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
-      Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
-      Bson::String(string) => Some(ValueType::Str(string.to_string())),
-      Bson::I32(num) => Some(ValueType::I32(*num)),
-      Bson::I64(num) => Some(ValueType::I64(*num)),
-      _ => None,
-    }
-  }
-
-  fn get_type(value: &Bson) -> Option<String> {
-    match value {
-      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => {
-        Some(String::from("Number"))
-      }
-      Bson::Document(_) => Some(String::from("Document")),
-      Bson::Boolean(_) => Some(String::from("Boolean")),
-      Bson::String(_) => Some(String::from("String")),
-      Bson::Array(_) => Some(String::from("Array")),
-      Bson::Null => Some(String::from("Null")),
-      _ => None,
-    }
-  }
-
-  fn set_name(&mut self, name: Option<String>) {
-    self.name = name
-  }
-
-  fn set_bson_type(&mut self, bsontype: Option<String>) {
-    self.bsonType = bsontype
-  }
-
-  fn update_count(&mut self) {
-    self.count += 1
-  }
-
-  fn update_value(&mut self, value: &Bson) {
-    let value_type = Self::get_value(&value);
-    if let Some(value_type) = value_type {
-      self.push_value(value_type)
-    }
-  }
-
-  fn set_values(&mut self, values: Vec<ValueType>) {
-    self.values = values
-  }
-
-  fn push_value(&mut self, value: ValueType) {
-    self.values.push(value)
-  }
-}
-
 impl SchemaParser {
   pub fn new() -> Self {
     SchemaParser {
@@ -277,6 +118,7 @@ impl SchemaParser {
   }
 }
 
+// these are actually integration tests and should be moved into test dir
 #[cfg(test)]
 mod test {
   use super::SchemaParser;
