@@ -42,3 +42,29 @@ impl Field {
     }
   }
 }
+
+// #[cfg(test)]
+//
+// mod tests {
+//   use super::*;
+//
+//   #[test]
+//   fn new() {
+//     let name = "Nori";
+//     let path = String.from("Nori.cat");
+//     let count = 1;
+//
+//     let preset_field = Field {
+//       name: "Nori",
+//       count: 1,
+//       path: "Nori.cat",
+//       filed_type: None,
+//       probability: None,
+//       has_duplicates: None,
+//       types: Vec::new(),
+//     };
+//     let new_field = Field::new(name, path, count);
+//
+//     // assert_eq!(preset_field, new_field);
+//   }
+// }
