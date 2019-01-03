@@ -1,6 +1,3 @@
-extern crate failure;
-extern crate mongodb_schema_parser;
-
 use failure::Error;
 use mongodb_schema_parser::SchemaParser;
 use std::fs;

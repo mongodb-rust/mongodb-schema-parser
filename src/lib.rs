@@ -68,7 +68,7 @@ impl SchemaParser {
 
   // why do i have to explicitly return true instead of just returning field.name == key
   fn does_field_name_exist(&mut self, key: &str) -> bool {
-    for mut field in &mut self.fields {
+    for field in &mut self.fields {
       if field.name == key {
         return true;
       }
@@ -78,9 +78,10 @@ impl SchemaParser {
 
   fn update_field(&mut self, key: &str, value: &Bson) {
     // need to set count here as well
-    for mut field in &mut self.fields {
+    // maybe store the names in a hash map so then it's easier to look up the key
+    for field in &mut self.fields {
       if field.name == key {
-        for mut field_type in &mut field.types {
+        for field_type in &mut field.types {
           // update field type,
           field_type.update_count();
           field_type.update_value(&value);
