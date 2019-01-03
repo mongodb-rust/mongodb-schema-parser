@@ -9,16 +9,16 @@ MongoDB Schema Parser.
 
 ## Usage
 ```rust
-use MongoDBSchemaParser
+use SchemaParser
 
 pub fn main () {
   let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
   let file: Vec<&str> = file.split("\n").collect();
-  let schema_parser = MongoDBSchemaParser::new();
+  let schema_parser = SchemaParser::new();
   for json in file {
-    schema_parser::write(&json);
+    schema_parser.write(&json)?;
   }
-  let result = schema_parser::flush();
+  let result = schema_parser.to_json();
 }
 ```
 
