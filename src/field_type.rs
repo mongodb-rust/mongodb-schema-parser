@@ -1,6 +1,6 @@
 use super::{Bson, ValueType};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 pub struct FieldType {
   pub name: Option<String>,
@@ -14,10 +14,10 @@ pub struct FieldType {
 }
 
 impl FieldType {
-  pub fn new(path: String) -> Self {
+  pub fn new(path: &str) -> Self {
     FieldType {
       name: None,
-      path,
+      path: path.to_string(),
       bsonType: None,
       count: 0,
       probability: None,
