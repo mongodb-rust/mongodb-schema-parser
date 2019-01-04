@@ -114,3 +114,118 @@ impl FieldType {
     self.values.push(value)
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn it_creates_new() {
+    let address = "address";
+    let field_type = FieldType::new(address);
+    assert_eq!(field_type.path, address);
+  }
+
+  #[test]
+  fn it_adds_to_type() {
+    unimplemented!();
+  }
+
+  #[test]
+  fn it_gets_value_i32() {
+    let bson_value = Bson::I32(1234);
+    let value = FieldType::get_value(&bson_value);
+    assert_eq!(value, Some(ValueType::I32(1234)));
+  }
+
+  #[test]
+  fn it_gets_value_i64() {
+    let bson_value = Bson::I64(1234);
+    let value = FieldType::get_value(&bson_value);
+    assert_eq!(value, Some(ValueType::I64(1234)));
+  }
+
+  #[test]
+  fn it_gets_value_floating_point() {
+    let bson_value = Bson::FloatingPoint(1.2);
+    let value = FieldType::get_value(&bson_value);
+    assert_eq!(value, Some(ValueType::FloatingPoint(1.2)));
+  }
+
+  #[test]
+  fn it_gets_value_boolean() {
+    let bson_value = Bson::Boolean(true);
+    let value = FieldType::get_value(&bson_value);
+    assert_eq!(value, Some(ValueType::Boolean(true)));
+  }
+
+  #[test]
+  fn it_gets_value_string() {
+    let bson_value = Bson::String("cats".to_string());
+    let value = FieldType::get_value(&bson_value);
+    assert_eq!(value, Some(ValueType::Str("cats".to_string())));
+  }
+
+  #[test]
+  fn it_gets_value_none() {
+    let bson_value = Bson::TimeStamp(1234);
+    let value = FieldType::get_value(&bson_value);
+    assert_eq!(value, None);
+  }
+
+  #[test]
+  fn it_gets_type() {}
+
+  #[test]
+  fn it_sets_type() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_name(Some("postal_code".to_string()));
+    assert_eq!(field_type.name, Some("postal_code".to_string()));
+  }
+
+  #[test]
+  fn it_sets_bson_type() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_bson_type(Some("Document".to_string()));
+    assert_eq!(field_type.bsonType, Some("Document".to_string()));
+  }
+
+  #[test]
+  fn it_updates_count() {
+    let mut field_type = FieldType::new("address");
+    field_type.update_count();
+    assert_eq!(field_type.count, 1);
+  }
+
+  #[test]
+  fn it_updates_value_some() {
+    let bson_value = Bson::I32(1234);
+    let mut field_type = FieldType::new("address");
+    field_type.update_value(&bson_value);
+    assert_eq!(field_type.values[0], ValueType::I32(1234));
+  }
+
+  #[test]
+  fn it_updates_value_none() {
+    let bson_value = Bson::TimeStamp(1234);
+    let mut field_type = FieldType::new("address");
+    field_type.update_value(&bson_value);
+    assert!(field_type.values.is_empty());
+  }
+
+  #[test]
+  fn it_sets_value() {
+    let mut field_type = FieldType::new("address");
+    let vec = vec![ValueType::I32(1234), ValueType::I64(1234)];
+    field_type.set_values(vec.clone());
+    assert_eq!(&field_type.values, &vec)
+  }
+
+  #[test]
+  fn it_pushes_value() {
+    let value_type = ValueType::I32(1234);
+    let mut field_type = FieldType::new("address");
+    field_type.push_value(value_type.clone());
+    assert_eq!(field_type.values[0], value_type);
+  }
+}
