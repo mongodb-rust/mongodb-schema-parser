@@ -6,15 +6,14 @@
 //#![cfg_attr(test, deny(warnings))]
 
 extern crate bson;
-extern crate failure;
+use bson::{Bson, Document};
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
-
 use serde_json::Value;
 
-use bson::{Bson, Document};
 use std::mem;
 use std::string::String;
 
@@ -30,6 +29,7 @@ use crate::value_type::ValueType;
 // mod error;
 // pub use error::{Error, ErrorKind, Result};
 
+extern crate failure;
 /// Custom Result type
 pub type Result<T> = std::result::Result<T, failure::Error>;
 
@@ -103,14 +103,14 @@ impl SchemaParser {
       } else {
         // if name doesn't exist, proceed by this path and create a new field
         let current_path = Field::get_path(key.clone(), path);
-        let mut field = Field::new(&key, current_path.clone(), count);
+        let mut field = Field::new(&key, &current_path, count);
 
         match &value {
           Bson::Document(subdoc) => {
             self.generate_field(subdoc.to_owned(), &Some(current_path));
           }
           _ => {
-            let field_type = FieldType::new(current_path).add_to_type(&value);
+            let field_type = FieldType::new(&current_path).add_to_type(&value);
             field.add_to_types(field_type.to_owned());
           }
         };

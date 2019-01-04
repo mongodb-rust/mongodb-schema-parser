@@ -44,7 +44,7 @@ fn json_file_gen() -> Result<(), Error> {
   let file = fs::read_to_string("examples/fanclub.json")?;
   let vec: Vec<&str> = file.trim().split('\n').collect();
   let mut schema_parser = SchemaParser::new();
-  for mut json in vec {
+  for json in vec {
     // this panics i think ?
     schema_parser.write(&json)?;
   }
