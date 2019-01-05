@@ -119,3 +119,29 @@ impl SchemaParser {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn it_creates_new() {}
+
+  #[test]
+  fn it_writes() {}
+
+  #[test]
+  fn it_formats_to_json() {}
+
+  #[test]
+  fn it_adds_to_fields() {}
+
+  #[test]
+  fn it_checks_if_field_name_exists() {}
+
+  #[test]
+  fn it_updates_fields() {}
+
+  #[test]
+  fn it_generates_fields() {}
+}
