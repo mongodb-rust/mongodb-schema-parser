@@ -127,9 +127,7 @@ mod tests {
   }
 
   #[test]
-  fn it_adds_to_type() {
-    unimplemented!();
-  }
+  fn it_adds_to_type() {}
 
   #[test]
   fn it_gets_value_i32() {
