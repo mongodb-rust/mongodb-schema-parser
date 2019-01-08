@@ -14,6 +14,14 @@ extern crate serde;
 extern crate serde_json;
 use serde_json::Value;
 
+use wasm_bindgen::prelude::*;
+
+// using custom allocator which is built specifically for wasm; makes it smaller
+// + faster
+extern crate wee_alloc;
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 use std::mem;
 use std::string::String;
 
@@ -26,20 +34,44 @@ use crate::field_type::FieldType;
 mod value_type;
 use crate::value_type::ValueType;
 
-// mod error;
-// pub use error::{Error, ErrorKind, Result};
+// i have a method that returns a result with boxed error which i can't add the wasm-bindgen tag to them. intead i am wrapping my methods
 
 extern crate failure;
-/// Custom Result type
-pub type Result<T> = std::result::Result<T, failure::Error>;
 
+#[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SchemaParser {
   count: i64,
   fields: Vec<Field>,
 }
 
+#[wasm_bindgen]
 impl SchemaParser {
+  #[wasm_bindgen(constructor)]
+  #[wasm_bindgen(js_name = "new")]
+  pub fn wasm_new() -> Self {
+    Self::new()
+  }
+
+  #[wasm_bindgen(js_name = "write")]
+  pub fn wasm_write(&mut self, json: &str) -> Result<(), JsValue> {
+    match self.write(json) {
+      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
+      _ => Ok(()),
+    }
+  }
+
+  #[wasm_bindgen(js_name = "toJson")]
+  pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
+    match self.to_json() {
+      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
+      Ok(val) => Ok(val),
+    }
+  }
+}
+
+impl SchemaParser {
+  #[inline]
   pub fn new() -> Self {
     SchemaParser {
       count: 0,
@@ -47,7 +79,11 @@ impl SchemaParser {
     }
   }
 
-  pub fn write(&mut self, json: &str) -> Result<()> {
+  #[inline]
+  pub fn write(
+    &mut self,
+    json: &str,
+  ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let val: Value = serde_json::from_str(json)?;
     let bson = Bson::from(val);
     // should do a match for NoneError
@@ -58,15 +94,20 @@ impl SchemaParser {
     Ok(())
   }
 
-  pub fn to_json(&self) -> Result<String> {
+  #[inline]
+  pub fn to_json(
+    &self,
+  ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     Ok(serde_json::to_string(&self)?)
   }
 
+  #[inline]
   fn add_to_fields(&mut self, field: Field) {
     self.fields.push(field)
   }
 
   // why do i have to explicitly return true instead of just returning field.name == key
+  #[inline]
   fn does_field_name_exist(&mut self, key: &str) -> bool {
     for field in &mut self.fields {
       if field.name == key {
@@ -76,6 +117,7 @@ impl SchemaParser {
     false
   }
 
+  #[inline]
   fn update_field(&mut self, key: &str, value: &Bson) {
     // need to set count here as well
     // maybe store the names in a hash map so then it's easier to look up the key
@@ -90,6 +132,7 @@ impl SchemaParser {
     }
   }
 
+  #[inline]
   fn generate_field(&mut self, doc: Document, path: &Option<String>) {
     let count = 0;
 
