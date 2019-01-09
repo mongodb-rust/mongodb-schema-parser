@@ -34,8 +34,6 @@ use crate::field_type::FieldType;
 mod value_type;
 use crate::value_type::ValueType;
 
-// i have a method that returns a result with boxed error which i can't add the wasm-bindgen tag to them. intead i am wrapping my methods
-
 extern crate failure;
 
 #[wasm_bindgen]
@@ -45,6 +43,9 @@ pub struct SchemaParser {
   fields: Vec<Field>,
 }
 
+// Need to wrap schema parser impl for wasm suppport.
+// Here we are wrapping the exported to JS land methods and mathing on Result to
+// turn the error message to JsValue.
 #[wasm_bindgen]
 impl SchemaParser {
   #[wasm_bindgen(constructor)]

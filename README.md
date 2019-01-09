@@ -2,12 +2,13 @@
 [![crates.io version][1]][2] [![build status][3]][4]
 [![downloads][5]][6] [![docs.rs docs][7]][8]
 
-MongoDB Schema Parser.
+MongoDB Schema Parser. This library is meant to be used in Rust or as Web
+Assembly module in JavaScript.
 
 - [Documentation][8]
 - [Crates.io][2]
 
-## Usage
+## Usage: in Rust
 ```rust
 use SchemaParser
 
@@ -20,6 +21,30 @@ pub fn main () {
   }
   let result = schema_parser.to_json();
 }
+```
+
+## Usage: in JavaScript 
+Make sure your environment is setup for Web Assembly usage. 
+```js
+import { SchemaParser } from "mongodb-schema-parser";
+
+const schemaParser = new SchemaParser()
+
+// get the json file
+fetch('./fanclub.json')
+  .then(response => response.text())
+  .then(data => {
+    var json = data.split("\n")
+    for (var i = 0; i < json.length; i++) {
+      if (json[i] !== '') {
+        // feed the parser json line by line
+        schemaParser.write(json[i])
+      }
+    }
+    // get the result as a json string
+    var result = schemaParser.toJson()
+    console.log(result)
+  })
 ```
 
 ## Installation
