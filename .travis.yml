@@ -9,7 +9,7 @@ before_script: |
   # cargo install wasm-pack
   # wasm-pack init 
 script: |
-  rustup target add wasm32-unknown-unknown
+  rustup target add wasm32-unknown-unknown &&
   cargo fmt --all -- --check &&
   cargo clippy -- -D all &&
   cargo build --verbose &&

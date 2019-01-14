@@ -5,7 +5,7 @@
 //!
 //! ## Usage: in Rust
 //! ```rust
-//! use SchemaParser
+//! use mongodb_schema_parser::SchemaParser;
 //!
 //! pub fn main () {
 //!   let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
