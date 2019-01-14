@@ -92,12 +92,16 @@ pub struct SchemaParser {
 // turn the error message to JsValue.
 #[wasm_bindgen]
 impl SchemaParser {
+  /// Wrapper method for `SchemaParser::new()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "new")`
   #[wasm_bindgen(constructor)]
   #[wasm_bindgen(js_name = "new")]
   pub fn wasm_new() -> Self {
     Self::new()
   }
 
+  /// Wrapper method for `schema_parser.write()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "write")`
   #[wasm_bindgen(js_name = "write")]
   pub fn wasm_write(&mut self, json: &str) -> Result<(), JsValue> {
     match self.write(json) {
@@ -106,6 +110,8 @@ impl SchemaParser {
     }
   }
 
+  /// Wrapper method for `schema_parser.to_json()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "toJson")`
   #[wasm_bindgen(js_name = "toJson")]
   pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
     match self.to_json() {
@@ -242,7 +248,7 @@ impl SchemaParser {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  // use super::*;
 
   #[test]
   fn it_creates_new() {}
