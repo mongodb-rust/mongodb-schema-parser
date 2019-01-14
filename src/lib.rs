@@ -1,3 +1,47 @@
+//! #Infer a probabilistic schema for a MongoDB collection.
+//! This crate creates a probabilistic scehma given a json-style string
+//! representing a MongoDB collection. It can be used in both rust and javascript
+//! given a WASM compilation.
+//!
+//! ## Usage: in Rust
+//! ```rust
+//! use SchemaParser
+//!
+//! pub fn main () {
+//!   let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
+//!   let file: Vec<&str> = file.split("\n").collect();
+//!   let schema_parser = SchemaParser::new();
+//!   for json in file {
+//!     schema_parser.write(&json)?;
+//!   }
+//!   let result = schema_parser.to_json();
+//! }
+//! ```
+//!
+//! ## Usage: in JavaScript
+//! Make sure your environment is setup for Web Assembly usage.
+//! ```js
+//! import { SchemaParser } from "mongodb-schema-parser";
+//!
+//! const schemaParser = new SchemaParser()
+//!
+//! // get the json file
+//! fetch('./fanclub.json')
+//!   .then(response => response.text())
+//!   .then(data => {
+//!     var json = data.split("\n")
+//!     for (var i = 0; i < json.length; i++) {
+//!       if (json[i] !== '') {
+//!         // feed the parser json line by line
+//!         schemaParser.write(json[i])
+//!       }
+//!     }
+//!     // get the result as a json string
+//!     var result = schemaParser.toJson()
+//!     console.log(result)
+//!   })
+//! ```
+
 #![cfg_attr(feature = "nightly", deny(missing_docs))]
 #![cfg_attr(feature = "nightly", feature(external_doc))]
 #![cfg_attr(feature = "nightly", doc(include = "../README.md"))]
@@ -72,6 +116,14 @@ impl SchemaParser {
 }
 
 impl SchemaParser {
+  /// Returns a new instance of Schema Parser populated with zero `count` and an
+  /// empty `fields` vector.
+  ///
+  /// # Examples
+  /// ```
+  /// use mongodb_schema_parser::SchemaParser;
+  /// let schema_parser = SchemaParser::new();
+  /// ```
   #[inline]
   pub fn new() -> Self {
     SchemaParser {
@@ -80,6 +132,18 @@ impl SchemaParser {
     }
   }
 
+  /// Writes json-like string slices SchemaParser's fields vector.
+  ///
+  /// # Arguments
+  /// * `json` - A json-like string slice. i.e { "name": "Nori", "type": "Cat"}
+  ///
+  /// # Examples
+  /// ```
+  /// use mongodb_schema_parser::SchemaParser;
+  /// let schema_parser = SchemaParser::new();
+  /// let json = "{ "name": "Chashu", "type": "Cat" }";
+  /// schema_parser.write(&json);
+  /// ```
   #[inline]
   pub fn write(
     &mut self,
@@ -95,6 +159,18 @@ impl SchemaParser {
     Ok(())
   }
 
+  /// Returns a serde_json string. This should be called after all values were
+  /// written. This is also the result of the parsed documents.
+  ///
+  /// # Examples
+  /// ```
+  /// use mongodb_schema_parser::SchemaParser;
+  /// let schema_parser = SchemaParser::new();
+  /// let json = "{ "name": "Chashu", "type": "Cat" }";
+  /// schema_parser.write(&json);
+  /// let schema = schema_parser.to_json().unwrap();
+  /// println!("{}")
+  /// ```
   #[inline]
   pub fn to_json(
     &self,

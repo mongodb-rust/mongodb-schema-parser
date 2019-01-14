@@ -2,8 +2,8 @@
 [![crates.io version][1]][2] [![build status][3]][4]
 [![downloads][5]][6] [![docs.rs docs][7]][8]
 
-MongoDB Schema Parser. This library is meant to be used in Rust or as Web
-Assembly module in JavaScript.
+Infer a probabilistic schema for a MongoDB collection. This library is meant
+to be used in Rust or as Web Assembly module in JavaScript.
 
 - [Documentation][8]
 - [Crates.io][2]
