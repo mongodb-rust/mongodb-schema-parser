@@ -49,6 +49,7 @@
 #![allow(clippy::new_without_default_derive)]
 //#![cfg_attr(test, deny(warnings))]
 
+#[macro_use]
 extern crate bson;
 use bson::{Bson, Document};
 
@@ -147,7 +148,7 @@ impl SchemaParser {
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
   /// let schema_parser = SchemaParser::new();
-  /// let json = "{ "name": "Chashu", "type": "Cat" }";
+  /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write(&json);
   /// ```
   #[inline]
@@ -172,7 +173,7 @@ impl SchemaParser {
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
   /// let schema_parser = SchemaParser::new();
-  /// let json = "{ "name": "Chashu", "type": "Cat" }";
+  /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write(&json);
   /// let schema = schema_parser.to_json().unwrap();
   /// println!("{}")
@@ -248,26 +249,82 @@ impl SchemaParser {
 
 #[cfg(test)]
 mod tests {
-  // use super::*;
+  use super::*;
+  #[macro_use]
+  use bson::Bson;
 
   #[test]
-  fn it_creates_new() {}
+  fn it_creates_new() {
+    let schema_parser = SchemaParser::new();
+    assert_eq!(schema_parser.count, 0);
+    assert_eq!(schema_parser.fields.len(), 0);
+  }
 
   #[test]
-  fn it_writes() {}
+  fn it_writes() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    assert_eq!(schema_parser.count, 1);
+    assert_eq!(schema_parser.fields.len(), 2)
+  }
 
   #[test]
-  fn it_formats_to_json() {}
+  fn it_formats_to_json() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    let output = schema_parser.to_json().unwrap();
+    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":null,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":null,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":null,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":null,\"unique\":null}]}]}");
+  }
 
   #[test]
-  fn it_adds_to_fields() {}
+  fn it_adds_to_fields() {
+    let mut schema_parser = SchemaParser::new();
+    assert_eq!(schema_parser.fields.len(), 0);
+
+    let name = "Nori";
+    let path = "Nori.cat";
+    let count = 1;
+    let field = Field::new(&name, &path, count);
+
+    schema_parser.add_to_fields(field);
+    assert_eq!(schema_parser.fields.len(), 1);
+  }
 
   #[test]
-  fn it_checks_if_field_name_exists() {}
+  fn it_checks_if_field_name_exists() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    assert_eq!(schema_parser.does_field_name_exist("name"), true);
+    assert_eq!(schema_parser.does_field_name_exist("colour"), false);
+  }
 
   #[test]
-  fn it_updates_fields() {}
+  fn it_updates_fields() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    let name = Bson::String("Nori".to_owned());
+    schema_parser.update_field("name", &name);
+    let vec = vec![
+      ValueType::Str("Chashu".to_owned()),
+      ValueType::Str("Nori".to_owned()),
+    ];
+    assert_eq!(schema_parser.fields[0].types[0].values, vec);
+  }
 
   #[test]
-  fn it_generates_fields() {}
+  fn it_generates_fields() {
+    let mut schema_parser = SchemaParser::new();
+    let doc = doc! {
+      "name": "Rey",
+      "type": "Dog"
+    };
+    schema_parser.generate_field(doc, &None);
+    assert_eq!(schema_parser.fields.len(), 2);
+    assert_eq!(schema_parser.fields[0].name, "name");
+    assert_eq!(schema_parser.fields[1].name, "type");
+  }
 }

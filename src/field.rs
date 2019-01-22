@@ -60,14 +60,13 @@ mod tests {
     assert_eq!(field.count, count);
   }
 
-  // #[test]
-  // #[ignore]
-  // fn it_adds_to_types() {
-  //   let mut field = Field::new("Chashu", "Chashu.cat", 1);
-  //   let field_type = FieldType::new("path");
-  //   field.add_to_types(Some(field_type.clone()));
-  //   assert_eq!(field.types[0], field_type);
-  // }
+  #[test]
+  fn it_adds_to_types() {
+    let mut field = Field::new("Chashu", "Chashu.cat", 1);
+    let field_type = FieldType::new("path");
+    field.add_to_types(Some(field_type.clone()));
+    assert_eq!(field.types[0], field_type);
+  }
 
   #[test]
   fn it_gets_path_if_none() {
