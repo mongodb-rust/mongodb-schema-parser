@@ -47,7 +47,11 @@
 #![cfg_attr(feature = "nightly", doc(include = "../README.md"))]
 #![cfg_attr(feature = "nightly", deny(unsafe_code))]
 #![allow(clippy::new_without_default_derive)]
+#![feature(test)]
 //#![cfg_attr(test, deny(warnings))]
+
+extern crate failure;
+extern crate test;
 
 #[macro_use]
 extern crate bson;
@@ -78,8 +82,6 @@ use crate::field_type::FieldType;
 
 mod value_type;
 use crate::value_type::ValueType;
-
-extern crate failure;
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -249,15 +251,19 @@ impl SchemaParser {
 
 #[cfg(test)]
 mod tests {
+  use self::test::Bencher;
   use super::*;
-  #[macro_use]
-  use bson::Bson;
 
   #[test]
   fn it_creates_new() {
     let schema_parser = SchemaParser::new();
     assert_eq!(schema_parser.count, 0);
     assert_eq!(schema_parser.fields.len(), 0);
+  }
+
+  #[bench]
+  fn bench_it_creates_new(bench: &mut Bencher) {
+    bench.iter(|| SchemaParser::new);
   }
 
   #[test]
@@ -267,6 +273,13 @@ mod tests {
     schema_parser.write(&json_str).unwrap();
     assert_eq!(schema_parser.count, 1);
     assert_eq!(schema_parser.fields.len(), 2)
+  }
+
+  #[bench]
+  fn bench_it_writes(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+    bench.iter(|| schema_parser.write(&json_str));
   }
 
   #[test]
@@ -292,6 +305,20 @@ mod tests {
     assert_eq!(schema_parser.fields.len(), 1);
   }
 
+  #[bench]
+  fn bench_it_adds_to_fields(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+    let name = "Nori";
+    let path = "Nori.cat";
+    let count = 1;
+
+    bench.iter(|| {
+      let field = Field::new(&name, &path, count);
+      let n = test::black_box(field);
+      schema_parser.add_to_fields(n)
+    });
+  }
+
   #[test]
   fn it_checks_if_field_name_exists() {
     let mut schema_parser = SchemaParser::new();
@@ -299,6 +326,15 @@ mod tests {
     schema_parser.write(&json_str).unwrap();
     assert_eq!(schema_parser.does_field_name_exist("name"), true);
     assert_eq!(schema_parser.does_field_name_exist("colour"), false);
+  }
+
+  #[bench]
+  fn bench_it_check_if_field_name_exists(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+
+    bench.iter(|| schema_parser.does_field_name_exist("name"));
   }
 
   #[test]
@@ -315,6 +351,16 @@ mod tests {
     assert_eq!(schema_parser.fields[0].types[0].values, vec);
   }
 
+  #[bench]
+  fn bench_it_updates_fields(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    let name = Bson::String("Chashu".to_owned());
+
+    bench.iter(|| schema_parser.update_field("name", &name));
+  }
+
   #[test]
   fn it_generates_fields() {
     let mut schema_parser = SchemaParser::new();
@@ -326,5 +372,33 @@ mod tests {
     assert_eq!(schema_parser.fields.len(), 2);
     assert_eq!(schema_parser.fields[0].name, "name");
     assert_eq!(schema_parser.fields[1].name, "type");
+  }
+
+  #[bench]
+  fn bench_it_generates_fields_no_path(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+
+    bench.iter(|| {
+      let doc = doc! {
+        "name": "Rey",
+        "type": "Dog"
+      };
+      let n = test::black_box(doc);
+      schema_parser.generate_field(n, &None)
+    });
+  }
+
+  #[bench]
+  fn bench_it_generates_fields_with_path(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+
+    bench.iter(|| {
+      let doc = doc! {
+        "name": "Rey",
+        "type": "Dog"
+      };
+      let n = test::black_box(doc);
+      schema_parser.generate_field(n, &Some("treats".to_owned()))
+    });
   }
 }
