@@ -46,6 +46,7 @@ impl Field {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::test::Bencher;
 
   #[test]
   fn it_creates_new() {
@@ -60,12 +61,32 @@ mod tests {
     assert_eq!(field.count, count);
   }
 
+  #[bench]
+  fn bench_it_creates_new(bench: &mut Bencher) {
+    let name = "Nori";
+    let path = "Nori.cat";
+    let count = 1;
+
+    bench.iter(|| Field::new(&name, &path, count));
+  }
+
   #[test]
   fn it_adds_to_types() {
     let mut field = Field::new("Chashu", "Chashu.cat", 1);
     let field_type = FieldType::new("path");
     field.add_to_types(Some(field_type.clone()));
     assert_eq!(field.types[0], field_type);
+  }
+
+  #[bench]
+  fn bench_it_adds_to_types(bench: &mut Bencher) {
+    let mut field = Field::new("Chashu", "Chashu.cat", 1);
+
+    bench.iter(|| {
+      let field_type = FieldType::new("path");
+      let n = crate::test::black_box(Some(field_type));
+      field.add_to_types(n)
+    });
   }
 
   #[test]
@@ -81,5 +102,15 @@ mod tests {
       &Some(String::from("address")),
     );
     assert_eq!(path, String::from("address.postal_code"));
+  }
+
+  #[bench]
+  fn bench_it_gets_path(bench: &mut Bencher) {
+    bench.iter(|| {
+      Field::get_path(
+        String::from("postal_code"),
+        &Some(String::from("address")),
+      )
+    });
   }
 }
