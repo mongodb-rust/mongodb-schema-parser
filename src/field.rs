@@ -7,7 +7,7 @@ pub struct Field {
   pub count: usize,
   pub field_type: Option<String>,
   pub probability: Option<f64>,
-  pub has_duplicates: Option<bool>,
+  pub has_duplicates: bool,
   pub types: Vec<FieldType>,
 }
 
@@ -19,7 +19,7 @@ impl Field {
       path: path.to_string(),
       field_type: None,
       probability: None,
-      has_duplicates: None,
+      has_duplicates: false,
       types: Vec::new(),
     }
   }
@@ -40,6 +40,10 @@ impl Field {
         path
       }
     }
+  }
+
+  pub fn set_duplicates(&mut self, duplicates: bool) {
+    self.has_duplicates = duplicates
   }
 }
 
@@ -112,5 +116,18 @@ mod tests {
         &Some(String::from("address")),
       )
     });
+  }
+
+  #[test]
+  fn it_sets_duplicates() {
+    let mut field = Field::new("Rey", "Rey.dog", 1);
+    field.set_duplicates(true);
+    assert_eq!(field.has_duplicates, true)
+  }
+
+  #[bench]
+  fn bench_it_sets_duplicates(bench: &mut Bencher) {
+    let mut field = Field::new("Rey", "Rey.dog", 1);
+    bench.iter(|| field.set_duplicates(true))
   }
 }

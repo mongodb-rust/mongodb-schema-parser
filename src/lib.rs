@@ -154,10 +154,7 @@ impl SchemaParser {
   /// schema_parser.write(&json);
   /// ```
   #[inline]
-  pub fn write(
-    &mut self,
-    json: &str,
-  ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+  pub fn write(&mut self, json: &str) -> Result<(), failure::Error> {
     let val: Value = serde_json::from_str(json)?;
     let bson = Bson::from(val);
     // should do a match for NoneError
@@ -181,9 +178,7 @@ impl SchemaParser {
   /// println!("{}")
   /// ```
   #[inline]
-  pub fn to_json(
-    &self,
-  ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+  pub fn to_json(&self) -> Result<String, failure::Error> {
     Ok(serde_json::to_string(&self)?)
   }
 
@@ -209,11 +204,15 @@ impl SchemaParser {
     // maybe store the names in a hash map so then it's easier to look up the key
     for field in &mut self.fields {
       if field.name == key {
+        let mut has_duplicates = false;
         for field_type in &mut field.types {
-          // update field type,
           field_type.update_count();
+          // this will also update for duplicate fields
           field_type.update_value(&value);
+          field_type.set_unique();
+          has_duplicates = field_type.get_duplicates();
         }
+        field.set_duplicates(has_duplicates);
       }
     }
   }
@@ -225,7 +224,6 @@ impl SchemaParser {
     for (key, value) in doc {
       // check if we already have a field for this key;
       // this check should also be checking for uniqueness
-      // 'inner:
       // if name exist, call self.update_field -- should iterate over itself and call update field
       if self.does_field_name_exist(&key) {
         self.update_field(&key, &value);

@@ -9,7 +9,7 @@ pub struct FieldType {
   pub bsonType: Option<String>,
   pub probability: Option<f64>,
   pub values: Vec<ValueType>,
-  pub has_duplicates: Option<bool>,
+  pub has_duplicates: bool,
   pub unique: Option<usize>,
 }
 
@@ -22,7 +22,7 @@ impl FieldType {
       count: 0,
       probability: None,
       values: Vec::new(),
-      has_duplicates: None,
+      has_duplicates: false,
       unique: None,
     }
   }
@@ -86,6 +86,24 @@ impl FieldType {
       _ => None,
     }
   }
+  pub fn get_unique(&mut self) -> Option<usize> {
+    let mut vec = self.values.clone();
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    vec.dedup();
+    Some(vec.len())
+  }
+
+  pub fn set_unique(&mut self) {
+    self.unique = self.get_unique()
+  }
+
+  pub fn get_duplicates(&mut self) -> bool {
+    self.has_duplicates
+  }
+
+  pub fn set_duplicates(&mut self, duplicates: bool) {
+    self.has_duplicates = duplicates
+  }
 
   pub fn set_name(&mut self, name: Option<String>) {
     self.name = name
@@ -102,6 +120,9 @@ impl FieldType {
   pub fn update_value(&mut self, value: &Bson) {
     let value_type = Self::get_value(&value);
     if let Some(value_type) = value_type {
+      if self.values.contains(&value_type) {
+        self.set_duplicates(true);
+      }
       self.push_value(value_type)
     }
   }
@@ -197,6 +218,19 @@ mod tests {
   fn bench_it_sets_type(bench: &mut Bencher) {
     let mut field_type = FieldType::new("address");
     bench.iter(|| field_type.set_name(Some("postal_code".to_string())));
+  }
+
+  #[test]
+  fn it_sets_duplicates() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_duplicates(true);
+    assert_eq!(field_type.has_duplicates, true)
+  }
+
+  #[bench]
+  fn bench_it_sets_duplicates(bench: &mut Bencher) {
+    let mut field_type = FieldType::new("address");
+    bench.iter(|| field_type.set_duplicates(true));
   }
 
   #[test]

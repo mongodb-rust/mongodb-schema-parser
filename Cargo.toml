@@ -10,7 +10,7 @@ readme = "README.md"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 failure = "0.1.2"
@@ -22,5 +22,5 @@ wee_alloc = "0.4.2"
 console_error_panic_hook = "0.1.5"
 
 [dependencies.wasm-bindgen]
-version = "^0.2"
+version = "0.2.33"
 features = ["serde-serialize"]
