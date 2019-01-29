@@ -86,19 +86,21 @@ impl FieldType {
       _ => None,
     }
   }
-  pub fn get_unique(&mut self) -> Option<usize> {
+  pub fn get_unique(&mut self) -> usize {
     let mut vec = self.values.clone();
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     vec.dedup();
-    Some(vec.len())
+    vec.len()
   }
 
   pub fn set_unique(&mut self) {
-    self.unique = self.get_unique()
+    self.unique = Some(self.get_unique())
   }
 
   pub fn get_duplicates(&mut self) -> bool {
-    self.has_duplicates
+    let unique = self.get_unique();
+    let total_values = self.values.len();
+    (total_values - unique) != 0
   }
 
   pub fn set_duplicates(&mut self, duplicates: bool) {
@@ -218,6 +220,80 @@ mod tests {
   fn bench_it_sets_type(bench: &mut Bencher) {
     let mut field_type = FieldType::new("address");
     bench.iter(|| field_type.set_name(Some("postal_code".to_string())));
+  }
+
+  #[test]
+  fn it_gets_unique() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Hamburg".to_string()),
+    ]);
+    let unique = field_type.get_unique();
+    assert_eq!(unique, 2);
+  }
+
+  #[bench]
+  fn bench_it_gets_unique(bench: &mut Bencher) {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Hamburg".to_string()),
+    ]);
+    bench.iter(|| field_type.get_unique());
+  }
+
+  #[test]
+  fn it_sets_unique() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Hamburg".to_string()),
+    ]);
+    field_type.set_unique();
+    assert_eq!(field_type.unique, Some(2));
+  }
+
+  #[bench]
+  fn bench_it_sets_unique(bench: &mut Bencher) {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Hamburg".to_string()),
+    ]);
+    bench.iter(|| field_type.set_unique());
+  }
+
+  #[test]
+  fn it_gets_duplicates_when_none() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Hamburg".to_string()),
+    ]);
+    let has_duplicates = field_type.get_duplicates();
+    assert_eq!(has_duplicates, false)
+  }
+
+  #[test]
+  fn it_gets_duplicates_when_some() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Berlin".to_string()),
+    ]);
+    let has_duplicates = field_type.get_duplicates();
+    assert_eq!(has_duplicates, true)
+  }
+
+  #[bench]
+  fn bench_it_gets_duplicates(bench: &mut Bencher) {
+    let mut field_type = FieldType::new("address");
+    field_type.set_values(vec![
+      ValueType::Str("Berlin".to_string()),
+      ValueType::Str("Berlin".to_string()),
+    ]);
+    bench.iter(|| field_type.get_duplicates());
   }
 
   #[test]

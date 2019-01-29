@@ -5,14 +5,16 @@
 //!
 //! ## Usage: in Rust
 //! ```rust
-//! use SchemaParser
+//! extern crate mongodb_schema_parser;
+//! use mongodb_schema_parser::SchemaParser;
+//! use std::fs;
 //!
 //! pub fn main () {
 //!   let mut file = fs::read_to_string("examples/fanclub.json").unwrap();
-//!   let file: Vec<&str> = file.split("\n").collect();
-//!   let schema_parser = SchemaParser::new();
+//!   let file: Vec<&str> = file.trim().split("\n").collect();
+//!   let mut schema_parser = SchemaParser::new();
 //!   for json in file {
-//!     schema_parser.write(&json)?;
+//!     schema_parser.write(&json).unwrap();
 //!   }
 //!   let result = schema_parser.to_json();
 //! }
@@ -21,7 +23,7 @@
 //! ## Usage: in JavaScript
 //! Make sure your environment is setup for Web Assembly usage.
 //! ```js
-//! import { SchemaParser } from "mongodb-schema-parser";
+//! import { SchemaParser } from "mongodb-schema-parser"
 //!
 //! const schemaParser = new SchemaParser()
 //!
@@ -149,7 +151,7 @@ impl SchemaParser {
   /// # Examples
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
-  /// let schema_parser = SchemaParser::new();
+  /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write(&json);
   /// ```
@@ -171,11 +173,11 @@ impl SchemaParser {
   /// # Examples
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
-  /// let schema_parser = SchemaParser::new();
+  /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write(&json);
   /// let schema = schema_parser.to_json().unwrap();
-  /// println!("{}")
+  /// println!("{}", schema);
   /// ```
   #[inline]
   pub fn to_json(&self) -> Result<String, failure::Error> {
@@ -211,6 +213,7 @@ impl SchemaParser {
           field_type.update_value(&value);
           field_type.set_unique();
           has_duplicates = field_type.get_duplicates();
+          field_type.set_duplicates(has_duplicates);
         }
         field.set_duplicates(has_duplicates);
       }
@@ -286,7 +289,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":null,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":null,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":null,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":null,\"unique\":null}]}]}");
+    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":false,\"unique\":null}]}]}");
   }
 
   #[test]
