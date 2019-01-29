@@ -1,4 +1,4 @@
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 pub enum ValueType {
   Str(String),
   I32(i32),
