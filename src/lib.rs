@@ -220,6 +220,24 @@ impl SchemaParser {
     }
   }
 
+  fn update_or_create_field(
+    &mut self,
+    key: String,
+    value: &Bson,
+    path: String,
+    count: usize,
+  ) {
+    if self.does_field_name_exist(&key) {
+      self.update_field(key, &value);
+    } else {
+      // if name doesn't exist, proceed by this path and create a new field
+      let mut field = Field::new(key, &path, count);
+      let field_type = FieldType::new(&path).add_to_type(&value);
+      field.add_to_types(field_type.to_owned());
+      self.add_to_fields(field);
+    }
+  }
+
   #[inline]
   fn generate_field(&mut self, doc: Document, path: &Option<String>) {
     let count = 0;
@@ -228,24 +246,13 @@ impl SchemaParser {
       // check if we already have a field for this key;
       // this check should also be checking for uniqueness
       // if name exist, call self.update_field -- should iterate over itself and call update field
-      if self.does_field_name_exist(&key) {
-        self.update_field(&key, &value);
-      } else {
-        // if name doesn't exist, proceed by this path and create a new field
-        let current_path = Field::get_path(key.clone(), path);
-        let mut field = Field::new(&key, &current_path, count);
-
-        match &value {
-          Bson::Document(subdoc) => {
-            self.generate_field(subdoc.to_owned(), &Some(current_path));
-          }
-          _ => {
-            let field_type = FieldType::new(&current_path).add_to_type(&value);
-            field.add_to_types(field_type.to_owned());
-          }
-        };
-        self.add_to_fields(field);
-      }
+      let current_path = Field::get_path(key.clone(), path);
+      match &value {
+        Bson::Document(subdoc) => {
+          self.generate_field(subdoc.to_owned(), &Some(current_path));
+        }
+        _ => self.update_or_create_field(key, &value, current_path, count),
+      };
     }
   }
 }
