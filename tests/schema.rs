@@ -49,6 +49,6 @@ fn json_file_gen() -> Result<(), Error> {
     schema_parser.write(&json)?;
   }
   let schema = schema_parser.to_json();
-  println!("{:?}", schema.unwrap());
+  println!("{:?}", schema);
   Ok(())
 }

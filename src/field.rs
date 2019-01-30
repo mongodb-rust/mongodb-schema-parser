@@ -12,9 +12,9 @@ pub struct Field {
 }
 
 impl Field {
-  pub fn new(name: &str, path: &str, count: usize) -> Self {
+  pub fn new(name: String, path: &str, count: usize) -> Self {
     Field {
-      name: name.to_string(),
+      name: name,
       count,
       path: path.to_string(),
       field_type: None,
@@ -54,29 +54,27 @@ mod tests {
 
   #[test]
   fn it_creates_new() {
-    let name = "Nori";
     let path = "Nori.cat";
     let count = 1;
 
-    let field = Field::new(&name, &path, count);
+    let field = Field::new("Nori".to_string(), &path, count);
 
-    assert_eq!(field.name, name);
+    assert_eq!(field.name, "Nori".to_string());
     assert_eq!(field.path, path);
     assert_eq!(field.count, count);
   }
 
   #[bench]
   fn bench_it_creates_new(bench: &mut Bencher) {
-    let name = "Nori";
     let path = "Nori.cat";
     let count = 1;
 
-    bench.iter(|| Field::new(&name, &path, count));
+    bench.iter(|| Field::new("Nori".to_string(), &path, count));
   }
 
   #[test]
   fn it_adds_to_types() {
-    let mut field = Field::new("Chashu", "Chashu.cat", 1);
+    let mut field = Field::new("Chashu".to_string(), "Chashu.cat", 1);
     let field_type = FieldType::new("path");
     field.add_to_types(Some(field_type.clone()));
     assert_eq!(field.types[0], field_type);
@@ -84,7 +82,7 @@ mod tests {
 
   #[bench]
   fn bench_it_adds_to_types(bench: &mut Bencher) {
-    let mut field = Field::new("Chashu", "Chashu.cat", 1);
+    let mut field = Field::new("Chashu".to_string(), "Chashu.cat", 1);
 
     bench.iter(|| {
       let field_type = FieldType::new("path");
@@ -120,14 +118,14 @@ mod tests {
 
   #[test]
   fn it_sets_duplicates() {
-    let mut field = Field::new("Rey", "Rey.dog", 1);
+    let mut field = Field::new("Rey".to_string(), "Rey.dog", 1);
     field.set_duplicates(true);
     assert_eq!(field.has_duplicates, true)
   }
 
   #[bench]
   fn bench_it_sets_duplicates(bench: &mut Bencher) {
-    let mut field = Field::new("Rey", "Rey.dog", 1);
+    let mut field = Field::new("Rey".to_string(), "Rey.dog", 1);
     bench.iter(|| field.set_duplicates(true))
   }
 }
