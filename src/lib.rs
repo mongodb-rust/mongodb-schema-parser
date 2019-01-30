@@ -201,7 +201,7 @@ impl SchemaParser {
   }
 
   #[inline]
-  fn update_field(&mut self, key: &str, value: &Bson) {
+  fn update_field(&mut self, key: String, value: &Bson) {
     // need to set count here as well
     // maybe store the names in a hash map so then it's easier to look up the key
     for field in &mut self.fields {
@@ -304,10 +304,10 @@ mod tests {
     let mut schema_parser = SchemaParser::new();
     assert_eq!(schema_parser.fields.len(), 0);
 
-    let name = "Nori";
+    let name = "Nori".to_string();
     let path = "Nori.cat";
     let count = 1;
-    let field = Field::new(&name, &path, count);
+    let field = Field::new(name, &path, count);
 
     schema_parser.add_to_fields(field);
     assert_eq!(schema_parser.fields.len(), 1);
@@ -316,12 +316,11 @@ mod tests {
   #[bench]
   fn bench_it_adds_to_fields(bench: &mut Bencher) {
     let mut schema_parser = SchemaParser::new();
-    let name = "Nori";
     let path = "Nori.cat";
     let count = 1;
 
     bench.iter(|| {
-      let field = Field::new(&name, &path, count);
+      let field = Field::new("Nori".to_string(), &path, count);
       let n = test::black_box(field);
       schema_parser.add_to_fields(n)
     });
@@ -351,7 +350,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let name = Bson::String("Nori".to_owned());
-    schema_parser.update_field("name", &name);
+    schema_parser.update_field("name".to_string(), &name);
     let vec = vec![
       ValueType::Str("Chashu".to_owned()),
       ValueType::Str("Nori".to_owned()),
@@ -366,7 +365,7 @@ mod tests {
     schema_parser.write(&json_str).unwrap();
     let name = Bson::String("Chashu".to_owned());
 
-    bench.iter(|| schema_parser.update_field("name", &name));
+    bench.iter(|| schema_parser.update_field("name".to_string(), &name));
   }
 
   #[test]

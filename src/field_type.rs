@@ -65,8 +65,9 @@ impl FieldType {
   pub fn get_value(value: &Bson) -> Option<ValueType> {
     match value {
       Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
-      Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
       Bson::String(string) => Some(ValueType::Str(string.to_string())),
+      Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
+      Bson::ObjectId(id) => Some(ValueType::Str(id.to_string())),
       Bson::I32(num) => Some(ValueType::I32(*num)),
       Bson::I64(num) => Some(ValueType::I64(*num)),
       _ => None,
@@ -79,6 +80,7 @@ impl FieldType {
         Some(String::from("Number"))
       }
       Bson::Document(_) => Some(String::from("Document")),
+      Bson::ObjectId(_) => Some(String::from("ObjectId")),
       Bson::Boolean(_) => Some(String::from("Boolean")),
       Bson::String(_) => Some(String::from("String")),
       Bson::Array(_) => Some(String::from("Array")),
