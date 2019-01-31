@@ -161,8 +161,7 @@ impl SchemaParser {
     let bson = Bson::from(val);
     // should do a match for NoneError
     let doc = bson.as_document().unwrap().to_owned();
-    let count = &self.count + 1;
-    mem::replace(&mut self.count, count);
+    self.update_count();
     self.generate_field(doc, &None);
     Ok(())
   }
@@ -182,6 +181,10 @@ impl SchemaParser {
   #[inline]
   pub fn to_json(&self) -> Result<String, failure::Error> {
     Ok(serde_json::to_string(&self)?)
+  }
+
+  pub fn update_count(&mut self) {
+    self.count += 1
   }
 
   #[inline]
@@ -288,6 +291,15 @@ mod tests {
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
     assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":false,\"unique\":null}]}]}");
+  }
+
+  #[test]
+  fn it_updates_count() {
+    let mut schema_parser = SchemaParser::new();
+    assert_eq!(schema_parser.count, 0);
+    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    assert_eq!(schema_parser.count, 1);
   }
 
   #[test]
