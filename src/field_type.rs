@@ -19,7 +19,7 @@ impl FieldType {
       name: None,
       path: path.to_string(),
       bsonType: None,
-      count: 0,
+      count: 1,
       probability: None,
       values: Vec::new(),
       has_duplicates: false,
@@ -328,7 +328,7 @@ mod tests {
   fn it_updates_count() {
     let mut field_type = FieldType::new("address");
     field_type.update_count();
-    assert_eq!(field_type.count, 1);
+    assert_eq!(field_type.count, 2);
   }
 
   #[bench]
