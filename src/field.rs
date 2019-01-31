@@ -6,7 +6,7 @@ pub struct Field {
   pub path: String,
   pub count: usize,
   pub field_type: Option<String>,
-  pub probability: Option<f64>,
+  pub probability: f32,
   pub has_duplicates: bool,
   pub types: Vec<FieldType>,
 }
@@ -18,7 +18,7 @@ impl Field {
       count: 1,
       path: path.to_string(),
       field_type: None,
-      probability: None,
+      probability: 0.0,
       has_duplicates: false,
       types: Vec::new(),
     }
@@ -40,6 +40,10 @@ impl Field {
         path
       }
     }
+  }
+
+  pub fn set_probability(&mut self, parent_count: usize) {
+    self.probability = self.count as f32 / parent_count as f32
   }
 
   pub fn update_count(&mut self) {
@@ -143,5 +147,13 @@ mod tests {
   fn bench_it_updates_count(bench: &mut Bencher) {
     let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
     bench.iter(|| field.update_count());
+  }
+
+  #[allow(clippy::float_cmp)]
+  #[test]
+  fn it_sets_probability() {
+    let mut field = Field::new("Nori".to_string(), "Nori.cat");
+    field.set_probability(10);
+    assert_eq!(field.probability, 0.1);
   }
 }

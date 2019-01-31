@@ -73,7 +73,6 @@ extern crate wee_alloc;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-use std::mem;
 use std::string::String;
 
 mod field;
@@ -88,7 +87,7 @@ use crate::value_type::ValueType;
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SchemaParser {
-  count: i64,
+  count: usize,
   fields: Vec<Field>,
 }
 
@@ -210,16 +209,17 @@ impl SchemaParser {
     for field in &mut self.fields {
       if field.name == key {
         let mut has_duplicates = false;
+        field.update_count();
         for field_type in &mut field.types {
           field_type.update_count();
-          // this will also update for duplicate fields
+          field_type.set_probability(field.count);
           field_type.update_value(&value);
           field_type.set_unique();
           has_duplicates = field_type.get_duplicates();
           field_type.set_duplicates(has_duplicates);
         }
         field.set_duplicates(has_duplicates);
-        field.update_count();
+        field.set_probability(self.count);
       }
     }
   }
@@ -290,7 +290,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":false,\"unique\":null}]}]}");
+    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"field_type\":null,\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":0.0,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"field_type\":null,\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":0.0,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":false,\"unique\":null}]}]}");
   }
 
   #[test]

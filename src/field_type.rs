@@ -7,7 +7,7 @@ pub struct FieldType {
   pub path: String,
   pub count: usize,
   pub bsonType: Option<String>,
-  pub probability: Option<f64>,
+  pub probability: f32,
   pub values: Vec<ValueType>,
   pub has_duplicates: bool,
   pub unique: Option<usize>,
@@ -20,7 +20,7 @@ impl FieldType {
       path: path.to_string(),
       bsonType: None,
       count: 1,
-      probability: None,
+      probability: 0.0,
       values: Vec::new(),
       has_duplicates: false,
       unique: None,
@@ -109,6 +109,10 @@ impl FieldType {
     self.has_duplicates = duplicates
   }
 
+  pub fn set_probability(&mut self, parent_count: usize) {
+    self.probability = self.count as f32 / parent_count as f32
+  }
+
   pub fn set_name(&mut self, name: Option<String>) {
     self.name = name
   }
@@ -124,9 +128,6 @@ impl FieldType {
   pub fn update_value(&mut self, value: &Bson) {
     let value_type = Self::get_value(&value);
     if let Some(value_type) = value_type {
-      if self.values.contains(&value_type) {
-        self.set_duplicates(true);
-      }
       self.push_value(value_type)
     }
   }
@@ -210,6 +211,14 @@ mod tests {
 
   #[test]
   fn it_gets_type() {}
+
+  #[allow(clippy::float_cmp)]
+  #[test]
+  fn it_sets_probability() {
+    let mut field_type = FieldType::new("address");
+    field_type.set_probability(10);
+    assert_eq!(field_type.probability, 0.1);
+  }
 
   #[test]
   fn it_sets_type() {
