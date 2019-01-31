@@ -201,7 +201,7 @@ impl SchemaParser {
   }
 
   #[inline]
-  fn update_field(&mut self, key: String, value: &Bson) {
+  fn update_field(&mut self, key: &str, value: &Bson) {
     // need to set count here as well
     // maybe store the names in a hash map so then it's easier to look up the key
     for field in &mut self.fields {
@@ -216,22 +216,18 @@ impl SchemaParser {
           field_type.set_duplicates(has_duplicates);
         }
         field.set_duplicates(has_duplicates);
+        field.update_count();
       }
     }
   }
 
-  fn update_or_create_field(
-    &mut self,
-    key: String,
-    value: &Bson,
-    path: String,
-    count: usize,
-  ) {
+  fn update_or_create_field(&mut self, key: String, value: &Bson, path: &str) {
+    // check if we already have a field for this key;
+    // if name exist, call self.update_field, otherwise create new
     if self.does_field_name_exist(&key) {
-      self.update_field(key, &value);
+      self.update_field(&key, &value);
     } else {
-      // if name doesn't exist, proceed by this path and create a new field
-      let mut field = Field::new(key, &path, count);
+      let mut field = Field::new(key, &path);
       let field_type = FieldType::new(&path).add_to_type(&value);
       field.add_to_types(field_type.to_owned());
       self.add_to_fields(field);
@@ -240,18 +236,13 @@ impl SchemaParser {
 
   #[inline]
   fn generate_field(&mut self, doc: Document, path: &Option<String>) {
-    let count = 0;
-
     for (key, value) in doc {
-      // check if we already have a field for this key;
-      // this check should also be checking for uniqueness
-      // if name exist, call self.update_field -- should iterate over itself and call update field
       let current_path = Field::get_path(key.clone(), path);
       match &value {
         Bson::Document(subdoc) => {
           self.generate_field(subdoc.to_owned(), &Some(current_path));
         }
-        _ => self.update_or_create_field(key, &value, current_path, count),
+        _ => self.update_or_create_field(key, &value, &current_path),
       };
     }
   }
@@ -296,7 +287,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":0,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":0,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":false,\"unique\":null}]}]}");
+    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Chashu\"}],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"field_type\":null,\"probability\":null,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":null,\"values\":[{\"Str\":\"Cat\"}],\"has_duplicates\":false,\"unique\":null}]}]}");
   }
 
   #[test]
@@ -306,8 +297,7 @@ mod tests {
 
     let name = "Nori".to_string();
     let path = "Nori.cat";
-    let count = 1;
-    let field = Field::new(name, &path, count);
+    let field = Field::new(name, &path);
 
     schema_parser.add_to_fields(field);
     assert_eq!(schema_parser.fields.len(), 1);
@@ -317,10 +307,9 @@ mod tests {
   fn bench_it_adds_to_fields(bench: &mut Bencher) {
     let mut schema_parser = SchemaParser::new();
     let path = "Nori.cat";
-    let count = 1;
 
     bench.iter(|| {
-      let field = Field::new("Nori".to_string(), &path, count);
+      let field = Field::new("Nori".to_string(), &path);
       let n = test::black_box(field);
       schema_parser.add_to_fields(n)
     });
@@ -350,7 +339,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let name = Bson::String("Nori".to_owned());
-    schema_parser.update_field("name".to_string(), &name);
+    schema_parser.update_field("name", &name);
     let vec = vec![
       ValueType::Str("Chashu".to_owned()),
       ValueType::Str("Nori".to_owned()),
@@ -365,7 +354,7 @@ mod tests {
     schema_parser.write(&json_str).unwrap();
     let name = Bson::String("Chashu".to_owned());
 
-    bench.iter(|| schema_parser.update_field("name".to_string(), &name));
+    bench.iter(|| schema_parser.update_field("name", &name));
   }
 
   #[test]

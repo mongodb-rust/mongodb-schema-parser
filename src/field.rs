@@ -12,10 +12,10 @@ pub struct Field {
 }
 
 impl Field {
-  pub fn new(name: String, path: &str, count: usize) -> Self {
+  pub fn new(name: String, path: &str) -> Self {
     Field {
       name: name,
-      count,
+      count: 1,
       path: path.to_string(),
       field_type: None,
       probability: None,
@@ -42,6 +42,10 @@ impl Field {
     }
   }
 
+  pub fn update_count(&mut self) {
+    self.count += 1
+  }
+
   pub fn set_duplicates(&mut self, duplicates: bool) {
     self.has_duplicates = duplicates
   }
@@ -57,7 +61,7 @@ mod tests {
     let path = "Nori.cat";
     let count = 1;
 
-    let field = Field::new("Nori".to_string(), &path, count);
+    let field = Field::new("Nori".to_string(), &path);
 
     assert_eq!(field.name, "Nori".to_string());
     assert_eq!(field.path, path);
@@ -67,14 +71,13 @@ mod tests {
   #[bench]
   fn bench_it_creates_new(bench: &mut Bencher) {
     let path = "Nori.cat";
-    let count = 1;
 
-    bench.iter(|| Field::new("Nori".to_string(), &path, count));
+    bench.iter(|| Field::new("Nori".to_string(), &path));
   }
 
   #[test]
   fn it_adds_to_types() {
-    let mut field = Field::new("Chashu".to_string(), "Chashu.cat", 1);
+    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
     let field_type = FieldType::new("path");
     field.add_to_types(Some(field_type.clone()));
     assert_eq!(field.types[0], field_type);
@@ -82,7 +85,7 @@ mod tests {
 
   #[bench]
   fn bench_it_adds_to_types(bench: &mut Bencher) {
-    let mut field = Field::new("Chashu".to_string(), "Chashu.cat", 1);
+    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
 
     bench.iter(|| {
       let field_type = FieldType::new("path");
@@ -118,14 +121,27 @@ mod tests {
 
   #[test]
   fn it_sets_duplicates() {
-    let mut field = Field::new("Rey".to_string(), "Rey.dog", 1);
+    let mut field = Field::new("Rey".to_string(), "Rey.dog");
     field.set_duplicates(true);
     assert_eq!(field.has_duplicates, true)
   }
 
   #[bench]
   fn bench_it_sets_duplicates(bench: &mut Bencher) {
-    let mut field = Field::new("Rey".to_string(), "Rey.dog", 1);
+    let mut field = Field::new("Rey".to_string(), "Rey.dog");
     bench.iter(|| field.set_duplicates(true))
+  }
+
+  #[test]
+  fn it_updates_count() {
+    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
+    field.update_count();
+    assert_eq!(field.count, 2);
+  }
+
+  #[bench]
+  fn bench_it_updates_count(bench: &mut Bencher) {
+    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
+    bench.iter(|| field.update_count());
   }
 }
