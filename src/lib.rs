@@ -16,7 +16,7 @@
 //!   for json in file {
 //!     schema_parser.write(&json).unwrap();
 //!   }
-//!   let result = schema_parser.to_json();
+//!   let result = schema_parser.read();
 //! }
 //! ```
 //!
@@ -165,6 +165,24 @@ impl SchemaParser {
     Ok(())
   }
 
+  /// Finalizes and returns SchemaParser struct -- result of all parsed
+  /// documents.
+  ///
+  /// # Examples
+  /// ```
+  /// use mongodb_schema_parser::SchemaParser;
+  /// let mut schema_parser = SchemaParser::new();
+  /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
+  /// schema_parser.write(&json);
+  /// let schema = schema_parser.read();
+  /// println!("{:?}", schema);
+  /// ```
+  // might want to rename this to finalize depending on how much manipulation
+  // will have to be done later on.
+  pub fn read(self) -> SchemaParser {
+    self
+  }
+
   /// Returns a serde_json string. This should be called after all values were
   /// written. This is also the result of the parsed documents.
   ///
@@ -274,7 +292,7 @@ mod tests {
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     assert_eq!(schema_parser.count, 1);
-    assert_eq!(schema_parser.fields.len(), 2)
+    assert_eq!(schema_parser.fields.len(), 2);
   }
 
   #[bench]
@@ -282,6 +300,18 @@ mod tests {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
     bench.iter(|| schema_parser.write(&json_str));
+  }
+
+  // since read() only returns self right now, the test is the same as
+  // it_writes()
+  #[test]
+  fn it_reads() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+    schema_parser.write(&json_str).unwrap();
+    let output = schema_parser.read();
+    assert_eq!(output.count, 1);
+    assert_eq!(output.fields.len(), 2);
   }
 
   #[test]
