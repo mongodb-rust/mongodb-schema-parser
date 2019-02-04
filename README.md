@@ -19,7 +19,8 @@ pub fn main () {
   for json in file {
     schema_parser.write(&json)?;
   }
-  let result = schema_parser.to_json();
+  let result = schema_parser.read();
+  println!("{:?}", result);
 }
 ```
 
