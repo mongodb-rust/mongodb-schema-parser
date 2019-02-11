@@ -228,13 +228,17 @@ impl SchemaParser {
       if field.name == key {
         let mut has_duplicates = false;
         field.update_count();
-        for field_type in &mut field.types {
-          field_type.update_count();
-          field_type.set_probability(field.count);
-          field_type.update_value(&value);
-          field_type.set_unique();
-          has_duplicates = field_type.get_duplicates();
-          field_type.set_duplicates(has_duplicates);
+        if !field.does_field_type_exist(FieldType::get_type(&value)) {
+          // field type doesn't exist in field.types, create a new field_type
+          field.create_type(&value);
+        } else {
+          // update field_type based on bson_type
+          for field_type in &mut field.types {
+            if field_type.bsonType == FieldType::get_type(&value) {
+              field_type.update_type(field.count, &value);
+              has_duplicates = field_type.get_duplicates();
+            }
+          }
         }
         field.set_duplicates(has_duplicates);
         field.set_probability(self.count);
@@ -249,8 +253,9 @@ impl SchemaParser {
       self.update_field(&key, &value);
     } else {
       let mut field = Field::new(key, &path);
-      let field_type = FieldType::new(&path).add_to_type(&value);
-      field.add_to_types(field_type.to_owned());
+      field.create_type(&value);
+      // let field_type = FieldType::new(&path).add_to_type(&value);
+      // field.add_to_types(field_type.to_owned());
       self.add_to_fields(field);
     }
   }

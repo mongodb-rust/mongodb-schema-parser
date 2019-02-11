@@ -29,37 +29,38 @@ impl FieldType {
 
   pub fn add_to_type(mut self, value: &Bson) -> Option<Self> {
     let bson_value = value.clone();
-    let mut value_vec = Vec::new();
+    let bson_type = Self::get_type(&bson_value);
+    self.set_name(bson_type.clone());
+    self.set_bson_type(bson_type.clone());
 
     match value {
       Bson::Array(arr) => {
-        let bson_type = Self::get_type(&bson_value);
-        self.set_name(bson_type.clone());
-        self.set_bson_type(bson_type.clone());
-        // add values item in array as a separate func;
         for val in arr.iter() {
           let value_type = Self::get_value(val);
-
           if let Some(value_type) = value_type {
-            value_vec.push(value_type)
+            self.push_value(value_type)
           }
         }
-        self.set_values(value_vec);
         Some(self)
       }
       _ => {
         let value_type = Self::get_value(&bson_value);
-        let bson_type = Self::get_type(&bson_value);
-        self.set_name(bson_type.clone());
-        self.set_bson_type(bson_type.clone());
-        // add values item in array as a separate func;
         if let Some(value_type) = value_type {
-          value_vec.push(value_type);
-          self.set_values(value_vec);
+          self.push_value(value_type);
         }
         Some(self)
       }
     }
+  }
+
+  pub fn update_type(&mut self, parent_count: usize, value: &Bson) {
+    let duplicates = self.get_duplicates();
+
+    self.update_count();
+    self.set_probability(parent_count);
+    self.update_value(&value);
+    self.set_unique();
+    self.set_duplicates(duplicates);
   }
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
@@ -88,7 +89,8 @@ impl FieldType {
       _ => None,
     }
   }
-  pub fn get_unique(&mut self) -> usize {
+
+  fn get_unique(&mut self) -> usize {
     let mut vec = self.values.clone();
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     vec.dedup();
@@ -126,9 +128,22 @@ impl FieldType {
   }
 
   pub fn update_value(&mut self, value: &Bson) {
-    let value_type = Self::get_value(&value);
-    if let Some(value_type) = value_type {
-      self.push_value(value_type)
+    match value {
+      Bson::Array(arr) => {
+        for val in arr.iter() {
+          let value_type = Self::get_value(val);
+
+          if let Some(value_type) = value_type {
+            self.push_value(value_type)
+          }
+        }
+      }
+      _ => {
+        let value_type = Self::get_value(&value);
+        if let Some(value_type) = value_type {
+          self.push_value(value_type)
+        }
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-use super::FieldType;
+use super::{Bson, FieldType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Field {
@@ -24,10 +24,25 @@ impl Field {
     }
   }
 
+  pub fn create_type(&mut self, value: &Bson) {
+    // let value_type = FieldType::get_type(&value);
+    let field_type = FieldType::new(&self.path).add_to_type(&value);
+    self.add_to_types(field_type.to_owned())
+  }
+
   pub fn add_to_types(&mut self, field_type: Option<FieldType>) {
     if let Some(field_type) = field_type {
       self.types.push(field_type)
     }
+  }
+
+  pub fn does_field_type_exist(&mut self, field_type: Option<String>) -> bool {
+    for ftype in &mut self.types {
+      if ftype.bsonType == field_type {
+        return true;
+      }
+    }
+    false
   }
 
   pub fn get_path(name: String, path: &Option<String>) -> String {
