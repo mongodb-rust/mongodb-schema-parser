@@ -85,7 +85,7 @@ mod value_type;
 use crate::value_type::ValueType;
 
 #[wasm_bindgen]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SchemaParser {
   count: usize,
   fields: Vec<Field>,
@@ -200,6 +200,7 @@ impl SchemaParser {
     Ok(serde_json::to_string(&self)?)
   }
 
+  #[inline]
   pub fn update_count(&mut self) {
     self.count += 1
   }
@@ -222,19 +223,20 @@ impl SchemaParser {
 
   #[inline]
   fn update_field(&mut self, key: &str, value: &Bson) {
-    // need to set count here as well
-    // maybe store the names in a hash map so then it's easier to look up the key
     for field in &mut self.fields {
       if field.name == key {
         let mut has_duplicates = false;
         field.update_count();
         if !field.does_field_type_exist(FieldType::get_type(&value)) {
           // field type doesn't exist in field.types, create a new field_type
+          println!("field type does not exist {}", &key);
           field.create_type(&value);
         } else {
           // update field_type based on bson_type
           for field_type in &mut field.types {
             if field_type.bsonType == FieldType::get_type(&value) {
+              println!("updating field_type {}", &key);
+              println!("bson type of value {:?}", FieldType::get_type(&value));
               field_type.update_type(field.count, &value);
               has_duplicates = field_type.get_duplicates();
             }
@@ -246,16 +248,16 @@ impl SchemaParser {
     }
   }
 
+  #[inline]
   fn update_or_create_field(&mut self, key: String, value: &Bson, path: &str) {
     // check if we already have a field for this key;
     // if name exist, call self.update_field, otherwise create new
     if self.does_field_name_exist(&key) {
+      println!("field name exists {}", &key);
       self.update_field(&key, &value);
     } else {
       let mut field = Field::new(key, &path);
       field.create_type(&value);
-      // let field_type = FieldType::new(&path).add_to_type(&value);
-      // field.add_to_types(field_type.to_owned());
       self.add_to_fields(field);
     }
   }
@@ -263,13 +265,11 @@ impl SchemaParser {
   #[inline]
   fn generate_field(&mut self, doc: Document, path: &Option<String>) {
     for (key, value) in doc {
-      let current_path = Field::get_path(key.clone(), path);
-      match &value {
-        Bson::Document(subdoc) => {
-          self.generate_field(subdoc.to_owned(), &Some(current_path));
-        }
-        _ => self.update_or_create_field(key, &value, &current_path),
-      };
+      self.update_or_create_field(
+        key.to_string(),
+        &value,
+        &Field::get_path(key.to_string(), path),
+      )
     }
   }
 }
