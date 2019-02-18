@@ -34,10 +34,15 @@ impl FieldType {
     }
   }
 
-  pub fn add_to_type(mut self, value: &Bson) -> Option<Self> {
+  pub fn add_to_type(
+    mut self,
+    value: &Bson,
+    parent_count: usize,
+  ) -> Option<Self> {
     let bson_value = value.clone();
     self.set_name(&bson_value);
     self.set_bson_type(&bson_value);
+    self.set_probability(parent_count);
 
     match value {
       Bson::Array(arr) => {

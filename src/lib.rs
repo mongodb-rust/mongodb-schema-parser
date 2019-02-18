@@ -229,14 +229,11 @@ impl SchemaParser {
         field.update_count();
         if !field.does_field_type_exist(FieldType::get_type(&value)) {
           // field type doesn't exist in field.types, create a new field_type
-          println!("field type does not exist {}", &key);
           field.create_type(&value);
         } else {
           // update field_type based on bson_type
           for field_type in &mut field.types {
             if field_type.bsonType == FieldType::get_type(&value) {
-              println!("updating field_type {}", &key);
-              println!("bson type of value {:?}", FieldType::get_type(&value));
               field_type.update_type(field.count, &value);
               has_duplicates = field_type.get_duplicates();
             }
@@ -253,7 +250,6 @@ impl SchemaParser {
     // check if we already have a field for this key;
     // if name exist, call self.update_field, otherwise create new
     if self.does_field_name_exist(&key) {
-      println!("field name exists {}", &key);
       self.update_field(&key, &value);
     } else {
       let mut field = Field::new(key, &path);

@@ -30,7 +30,7 @@ impl Field {
 
   pub fn create_type(&mut self, value: &Bson) {
     // let value_type = FieldType::get_type(&value);
-    let field_type = FieldType::new(&self.path).add_to_type(&value);
+    let field_type = FieldType::new(&self.path).add_to_type(&value, self.count);
     self.add_to_types(field_type.to_owned())
   }
 
