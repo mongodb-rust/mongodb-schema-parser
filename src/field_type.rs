@@ -15,11 +15,11 @@ pub struct FieldType {
 }
 
 impl FieldType {
-  pub fn new(path: &str) -> Self {
+  pub fn new(path: &str, value: &Bson) -> Self {
     FieldType {
-      name: None,
+      name: FieldType::get_type(&value),
       path: path.to_string(),
-      bsonType: None,
+      bsonType: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
       // serde json and finalize methods should remove this field if vec is
@@ -34,14 +34,8 @@ impl FieldType {
     }
   }
 
-  pub fn add_to_type(
-    mut self,
-    value: &Bson,
-    parent_count: usize,
-  ) -> Option<Self> {
+  pub fn add_to_type(mut self, value: &Bson, parent_count: usize) -> Self {
     let bson_value = value.clone();
-    self.set_name(&bson_value);
-    self.set_bson_type(&bson_value);
     self.set_probability(parent_count);
 
     match value {
@@ -49,10 +43,10 @@ impl FieldType {
         for val in arr.iter() {
           let value_type = Self::get_value(val);
           if let Some(value_type) = value_type {
-            self.push_value(value_type)
+            self.values.push(value_type);
           }
         }
-        Some(self)
+        self
       }
       Bson::Document(subdoc) => {
         let mut schema_parser = SchemaParser::new();
@@ -60,14 +54,14 @@ impl FieldType {
           .generate_field(subdoc.to_owned(), &Some(self.path.clone()));
         // need to add to type struct somehow
         self.set_schema(schema_parser);
-        Some(self)
+        self
       }
       _ => {
         let value_type = Self::get_value(&bson_value);
         if let Some(value_type) = value_type {
-          self.push_value(value_type);
+          self.values.push(value_type);
         }
-        Some(self)
+        self
       }
     }
   }
@@ -156,14 +150,6 @@ impl FieldType {
     self.probability = self.count as f32 / parent_count as f32
   }
 
-  pub fn set_name(&mut self, bson_value: &Bson) {
-    self.name = Self::get_type(&bson_value)
-  }
-
-  pub fn set_bson_type(&mut self, bson_value: &Bson) {
-    self.bsonType = Self::get_type(&bson_value)
-  }
-
   pub fn update_count(&mut self) {
     self.count += 1
   }
@@ -175,25 +161,17 @@ impl FieldType {
           let value_type = Self::get_value(val);
 
           if let Some(value_type) = value_type {
-            self.push_value(value_type)
+            self.values.push(value_type)
           }
         }
       }
       _ => {
         let value_type = Self::get_value(&value);
         if let Some(value_type) = value_type {
-          self.push_value(value_type)
+          self.values.push(value_type)
         }
       }
     }
-  }
-
-  fn set_values(&mut self, values: Vec<ValueType>) {
-    self.values = values
-  }
-
-  fn push_value(&mut self, value: ValueType) {
-    self.values.push(value)
   }
 }
 
@@ -205,13 +183,16 @@ mod tests {
   #[test]
   fn it_creates_new() {
     let address = "address";
-    let field_type = FieldType::new(address);
+    let bson_string = Bson::String("Oranienstr. 123".to_string());
+    let field_type = FieldType::new(address, &bson_string);
     assert_eq!(field_type.path, address);
   }
 
   #[bench]
   fn bench_it_creates_new(bench: &mut Bencher) {
-    bench.iter(|| FieldType::new("address"));
+    bench.iter(|| {
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()))
+    });
   }
 
   #[test]
@@ -271,144 +252,128 @@ mod tests {
   #[allow(clippy::float_cmp)]
   #[test]
   fn it_sets_probability() {
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     field_type.set_probability(10);
     assert_eq!(field_type.probability, 0.1);
   }
 
   #[test]
-  fn it_sets_type() {
-    let mut field_type = FieldType::new("address");
-    field_type.set_name(&Bson::String("postal_code".to_string()));
-    assert_eq!(field_type.name, Some("postal_code".to_string()));
-  }
-
-  #[bench]
-  fn bench_it_sets_type(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    bench
-      .iter(|| field_type.set_name(&Bson::String("postal_code".to_string())));
-  }
-
-  #[test]
   fn it_gets_unique() {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Hamburg".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     let unique = field_type.get_unique();
     assert_eq!(unique, 2);
   }
 
   #[bench]
   fn bench_it_gets_unique(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Hamburg".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     bench.iter(|| field_type.get_unique());
   }
 
   #[test]
   fn it_sets_unique() {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Hamburg".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     field_type.set_unique();
     assert_eq!(field_type.unique, Some(2));
   }
 
   #[bench]
   fn bench_it_sets_unique(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Hamburg".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     bench.iter(|| field_type.set_unique());
   }
 
   #[test]
   fn it_gets_duplicates_when_none() {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Hamburg".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     let has_duplicates = field_type.get_duplicates();
     assert_eq!(has_duplicates, false)
   }
 
   #[test]
   fn it_gets_duplicates_when_some() {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Berlin".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     let has_duplicates = field_type.get_duplicates();
     assert_eq!(has_duplicates, true)
   }
 
   #[bench]
   fn bench_it_gets_duplicates(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    field_type.set_values(vec![
-      ValueType::Str("Berlin".to_string()),
-      ValueType::Str("Berlin".to_string()),
-    ]);
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type
+      .values
+      .push(ValueType::Str("Hamburg".to_string()));
     bench.iter(|| field_type.get_duplicates());
   }
 
   #[test]
   fn it_sets_duplicates() {
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     field_type.set_duplicates(true);
     assert_eq!(field_type.has_duplicates, true)
   }
 
   #[bench]
   fn bench_it_sets_duplicates(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     bench.iter(|| field_type.set_duplicates(true));
   }
 
   #[test]
-  fn it_sets_bson_type() {
-    let mut field_type = FieldType::new("address");
-    field_type.set_bson_type(&Bson::String("postal_code".to_string()));
-    assert_eq!(field_type.bsonType, Some("String".to_string()));
-  }
-
-  #[bench]
-  fn bench_it_sets_bson_type(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    bench.iter(|| {
-      field_type.set_bson_type(&Bson::String("postal_code".to_string()))
-    });
-  }
-
-  #[test]
   fn it_updates_count() {
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     field_type.update_count();
     assert_eq!(field_type.count, 2);
   }
 
   #[bench]
   fn bench_it_updates_count(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     bench.iter(|| field_type.update_count());
   }
 
   #[test]
   fn it_updates_value_some() {
     let bson_value = Bson::I32(1234);
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     field_type.update_value(&bson_value);
     assert_eq!(field_type.values[0], ValueType::I32(1234));
   }
@@ -416,51 +381,17 @@ mod tests {
   #[bench]
   fn bench_it_updates_value_some(bench: &mut Bencher) {
     let bson_value = Bson::I32(1234);
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     bench.iter(|| field_type.update_value(&bson_value));
   }
 
   #[test]
   fn it_updates_value_none() {
     let bson_value = Bson::TimeStamp(1234);
-    let mut field_type = FieldType::new("address");
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     field_type.update_value(&bson_value);
     assert!(field_type.values.is_empty());
-  }
-
-  #[test]
-  fn it_sets_value() {
-    let mut field_type = FieldType::new("address");
-    let vec = vec![ValueType::I32(1234), ValueType::I64(1234)];
-    field_type.set_values(vec.clone());
-    assert_eq!(&field_type.values, &vec)
-  }
-
-  #[bench]
-  fn bench_it_sets_value(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    bench.iter(|| {
-      let vec = vec![ValueType::I32(1234), ValueType::I64(1234)];
-      let n = crate::test::black_box(vec);
-      field_type.set_values(n)
-    });
-  }
-
-  #[test]
-  fn it_pushes_value() {
-    let value_type = ValueType::I32(1234);
-    let mut field_type = FieldType::new("address");
-    field_type.push_value(value_type.clone());
-    assert_eq!(field_type.values[0], value_type);
-  }
-
-  #[bench]
-  fn bench_it_pushes_value(bench: &mut Bencher) {
-    let mut field_type = FieldType::new("address");
-    bench.iter(|| {
-      let value_type = ValueType::I32(1234);
-      let n = crate::test::black_box(value_type);
-      field_type.push_value(n)
-    });
   }
 }

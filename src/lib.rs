@@ -227,7 +227,7 @@ impl SchemaParser {
       if field.name == key {
         let mut has_duplicates = false;
         field.update_count();
-        if !field.does_field_type_exist(FieldType::get_type(&value)) {
+        if !field.does_field_type_exist(&FieldType::get_type(&value)) {
           // field type doesn't exist in field.types, create a new field_type
           field.create_type(&value);
         } else {
