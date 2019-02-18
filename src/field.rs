@@ -5,7 +5,7 @@ pub struct Field {
   pub name: String,
   pub path: String,
   pub count: usize,
-  pub field_type: Option<String>,
+  pub bson_types: Vec<Option<String>>,
   pub probability: f32,
   pub has_duplicates: bool,
   pub types: Vec<FieldType>,
@@ -17,11 +17,10 @@ impl Field {
       name: name,
       count: 1,
       path: path.to_string(),
-      // field_type should be set as a vector.
       // if vector is empty at the end, serde-json should remove
       // once a new type is added in lib to Field.types, should update this
       // vector.
-      field_type: None,
+      bson_types: Vec::new(),
       probability: 0.0,
       has_duplicates: false,
       types: Vec::new(),
@@ -29,24 +28,14 @@ impl Field {
   }
 
   pub fn create_type(&mut self, value: &Bson) {
-    // let value_type = FieldType::get_type(&value);
-    let field_type = FieldType::new(&self.path).add_to_type(&value, self.count);
-    self.add_to_types(field_type.to_owned())
+    let field_type =
+      FieldType::new(&self.path, &value).add_to_type(&value, self.count);
+    self.bson_types.push(field_type.bsonType.clone());
+    self.types.push(field_type.to_owned())
   }
 
-  pub fn add_to_types(&mut self, field_type: Option<FieldType>) {
-    if let Some(field_type) = field_type {
-      self.types.push(field_type)
-    }
-  }
-
-  pub fn does_field_type_exist(&mut self, field_type: Option<String>) -> bool {
-    for ftype in &mut self.types {
-      if ftype.bsonType == field_type {
-        return true;
-      }
-    }
-    false
+  pub fn does_field_type_exist(&mut self, field_type: &Option<String>) -> bool {
+    self.bson_types.contains(&field_type)
   }
 
   pub fn get_path(name: String, path: &Option<String>) -> String {
@@ -96,25 +85,6 @@ mod tests {
     let path = "Nori.cat";
 
     bench.iter(|| Field::new("Nori".to_string(), &path));
-  }
-
-  #[test]
-  fn it_adds_to_types() {
-    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
-    let field_type = FieldType::new("path");
-    field.add_to_types(Some(field_type.clone()));
-    assert_eq!(field.types[0], field_type);
-  }
-
-  #[bench]
-  fn bench_it_adds_to_types(bench: &mut Bencher) {
-    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
-
-    bench.iter(|| {
-      let field_type = FieldType::new("path");
-      let n = crate::test::black_box(Some(field_type));
-      field.add_to_types(n)
-    });
   }
 
   #[test]
