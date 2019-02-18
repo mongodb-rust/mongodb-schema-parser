@@ -1,4 +1,4 @@
-use super::{Bson, ValueType};
+use super::{Bson, SchemaParser, ValueType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
@@ -10,6 +10,7 @@ pub struct FieldType {
   pub probability: f32,
   pub values: Vec<ValueType>,
   pub has_duplicates: bool,
+  pub schema: Option<SchemaParser>,
   pub unique: Option<usize>,
 }
 
@@ -21,17 +22,22 @@ impl FieldType {
       bsonType: None,
       count: 1,
       probability: 0.0,
+      // serde json and finalize methods should remove this field if vec is
+      // empty
       values: Vec::new(),
       has_duplicates: false,
+      // serde json should remove when null
+      // on finalize method, should also destructure it somehow (everything from
+      // this structure should come up one level)
+      schema: None,
       unique: None,
     }
   }
 
   pub fn add_to_type(mut self, value: &Bson) -> Option<Self> {
     let bson_value = value.clone();
-    let bson_type = Self::get_type(&bson_value);
-    self.set_name(bson_type.clone());
-    self.set_bson_type(bson_type.clone());
+    self.set_name(&bson_value);
+    self.set_bson_type(&bson_value);
 
     match value {
       Bson::Array(arr) => {
@@ -41,6 +47,14 @@ impl FieldType {
             self.push_value(value_type)
           }
         }
+        Some(self)
+      }
+      Bson::Document(subdoc) => {
+        let mut schema_parser = SchemaParser::new();
+        schema_parser
+          .generate_field(subdoc.to_owned(), &Some(self.path.clone()));
+        // need to add to type struct somehow
+        self.set_schema(schema_parser);
         Some(self)
       }
       _ => {
@@ -53,14 +67,32 @@ impl FieldType {
     }
   }
 
+  // update_type and add_to_type methods need to be consolidated.
+  // when we are setting the type originally, or through handling a document,
+  // need to set probability, uniqueness etc.
+
   pub fn update_type(&mut self, parent_count: usize, value: &Bson) {
     let duplicates = self.get_duplicates();
+    let bson_type = self.bsonType.clone();
+    let path = self.path.clone();
+
+    if bson_type == Some(String::from("Document")) {
+      match &mut self.schema {
+        Some(schema_parser) => match &value {
+          Bson::Document(subdoc) => {
+            schema_parser.generate_field(subdoc.to_owned(), &Some(path))
+          }
+          _ => unimplemented!(),
+        },
+        None => unimplemented!(),
+      }
+    }
 
     self.update_count();
     self.set_probability(parent_count);
     self.update_value(&value);
     self.set_unique();
-    self.set_duplicates(duplicates);
+    self.set_duplicates(duplicates)
   }
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
@@ -90,6 +122,10 @@ impl FieldType {
     }
   }
 
+  fn set_schema(&mut self, schema: SchemaParser) {
+    self.schema = Some(schema)
+  }
+
   fn get_unique(&mut self) -> usize {
     let mut vec = self.values.clone();
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -115,12 +151,12 @@ impl FieldType {
     self.probability = self.count as f32 / parent_count as f32
   }
 
-  pub fn set_name(&mut self, name: Option<String>) {
-    self.name = name
+  pub fn set_name(&mut self, bson_value: &Bson) {
+    self.name = Self::get_type(&bson_value)
   }
 
-  pub fn set_bson_type(&mut self, bsontype: Option<String>) {
-    self.bsonType = bsontype
+  pub fn set_bson_type(&mut self, bson_value: &Bson) {
+    self.bsonType = Self::get_type(&bson_value)
   }
 
   pub fn update_count(&mut self) {
@@ -238,14 +274,15 @@ mod tests {
   #[test]
   fn it_sets_type() {
     let mut field_type = FieldType::new("address");
-    field_type.set_name(Some("postal_code".to_string()));
+    field_type.set_name(&Bson::String("postal_code".to_string()));
     assert_eq!(field_type.name, Some("postal_code".to_string()));
   }
 
   #[bench]
   fn bench_it_sets_type(bench: &mut Bencher) {
     let mut field_type = FieldType::new("address");
-    bench.iter(|| field_type.set_name(Some("postal_code".to_string())));
+    bench
+      .iter(|| field_type.set_name(&Bson::String("postal_code".to_string())));
   }
 
   #[test]
@@ -338,14 +375,16 @@ mod tests {
   #[test]
   fn it_sets_bson_type() {
     let mut field_type = FieldType::new("address");
-    field_type.set_bson_type(Some("Document".to_string()));
-    assert_eq!(field_type.bsonType, Some("Document".to_string()));
+    field_type.set_bson_type(&Bson::String("postal_code".to_string()));
+    assert_eq!(field_type.bsonType, Some("String".to_string()));
   }
 
   #[bench]
   fn bench_it_sets_bson_type(bench: &mut Bencher) {
     let mut field_type = FieldType::new("address");
-    bench.iter(|| field_type.set_bson_type(Some("Document".to_string())));
+    bench.iter(|| {
+      field_type.set_bson_type(&Bson::String("postal_code".to_string()))
+    });
   }
 
   #[test]

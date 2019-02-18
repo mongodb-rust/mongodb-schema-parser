@@ -17,6 +17,10 @@ impl Field {
       name: name,
       count: 1,
       path: path.to_string(),
+      // field_type should be set as a vector.
+      // if vector is empty at the end, serde-json should remove
+      // once a new type is added in lib to Field.types, should update this
+      // vector.
       field_type: None,
       probability: 0.0,
       has_duplicates: false,
