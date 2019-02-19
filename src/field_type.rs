@@ -52,7 +52,6 @@ impl FieldType {
         let mut schema_parser = SchemaParser::new();
         schema_parser
           .generate_field(subdoc.to_owned(), &Some(self.path.clone()));
-        // need to add to type struct somehow
         self.set_schema(schema_parser);
         self
       }
@@ -65,10 +64,6 @@ impl FieldType {
       }
     }
   }
-
-  // update_type and add_to_type methods need to be consolidated.
-  // when we are setting the type originally, or through handling a document,
-  // need to set probability, uniqueness etc.
 
   pub fn update_type(&mut self, parent_count: usize, value: &Bson) {
     let duplicates = self.get_duplicates();
@@ -121,8 +116,10 @@ impl FieldType {
     }
   }
 
-  fn set_schema(&mut self, schema: SchemaParser) {
-    self.schema = Some(schema)
+  pub fn get_duplicates(&mut self) -> bool {
+    let unique = self.get_unique();
+    let total_values = self.values.len();
+    (total_values - unique) != 0
   }
 
   fn get_unique(&mut self) -> usize {
@@ -132,29 +129,27 @@ impl FieldType {
     vec.len()
   }
 
-  pub fn set_unique(&mut self) {
-    self.unique = Some(self.get_unique())
-  }
-
-  pub fn get_duplicates(&mut self) -> bool {
-    let unique = self.get_unique();
-    let total_values = self.values.len();
-    (total_values - unique) != 0
-  }
-
   pub fn set_duplicates(&mut self, duplicates: bool) {
     self.has_duplicates = duplicates
   }
 
-  pub fn set_probability(&mut self, parent_count: usize) {
+  fn set_schema(&mut self, schema: SchemaParser) {
+    self.schema = Some(schema)
+  }
+
+  fn set_unique(&mut self) {
+    self.unique = Some(self.get_unique())
+  }
+
+  fn set_probability(&mut self, parent_count: usize) {
     self.probability = self.count as f32 / parent_count as f32
   }
 
-  pub fn update_count(&mut self) {
+  fn update_count(&mut self) {
     self.count += 1
   }
 
-  pub fn update_value(&mut self, value: &Bson) {
+  fn update_value(&mut self, value: &Bson) {
     match value {
       Bson::Array(arr) => {
         for val in arr.iter() {
@@ -321,9 +316,7 @@ mod tests {
     let mut field_type =
       FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     field_type.values.push(ValueType::Str("Berlin".to_string()));
-    field_type
-      .values
-      .push(ValueType::Str("Hamburg".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
     let has_duplicates = field_type.get_duplicates();
     assert_eq!(has_duplicates, true)
   }

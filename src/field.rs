@@ -17,9 +17,6 @@ impl Field {
       name: name,
       count: 1,
       path: path.to_string(),
-      // if vector is empty at the end, serde-json should remove
-      // once a new type is added in lib to Field.types, should update this
-      // vector.
       bson_types: Vec::new(),
       probability: 0.0,
       has_duplicates: false,

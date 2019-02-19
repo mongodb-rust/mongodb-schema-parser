@@ -87,8 +87,8 @@ use crate::value_type::ValueType;
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SchemaParser {
-  count: usize,
-  fields: Vec<Field>,
+  pub count: usize,
+  pub fields: Vec<Field>,
 }
 
 // Need to wrap schema parser impl for wasm suppport.
