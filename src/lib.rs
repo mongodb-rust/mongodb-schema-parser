@@ -321,7 +321,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"field_type\":null,\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":0.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"field_type\":null,\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":0.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"unique\":null}]}]}");
+    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":1.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":1.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}]}]}");
   }
 
   #[test]
