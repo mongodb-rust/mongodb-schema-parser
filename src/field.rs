@@ -1,38 +1,41 @@
 use super::{Bson, FieldType};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Field {
   pub name: String,
   pub path: String,
   pub count: usize,
-  pub bson_types: Vec<Option<String>>,
+  pub bson_types: Vec<String>,
   pub probability: f32,
   pub has_duplicates: bool,
-  pub types: Vec<FieldType>,
+  pub types: HashMap<String, FieldType>,
 }
 
 impl Field {
   pub fn new(name: String, path: &str) -> Self {
     Field {
-      name: name,
+      name,
       count: 1,
       path: path.to_string(),
       bson_types: Vec::new(),
       probability: 0.0,
       has_duplicates: false,
-      types: Vec::new(),
+      types: HashMap::new(),
     }
   }
 
   pub fn create_type(&mut self, value: &Bson) {
     let field_type =
       FieldType::new(&self.path, &value).add_to_type(&value, self.count);
-    self.bson_types.push(field_type.bsonType.clone());
-    self.types.push(field_type.to_owned())
+    self.bson_types.push(field_type.bson_type.clone());
+    self
+      .types
+      .insert(FieldType::get_type(&value), field_type.to_owned());
   }
 
-  pub fn does_field_type_exist(&mut self, field_type: &Option<String>) -> bool {
-    self.bson_types.contains(&field_type)
+  pub fn does_field_type_exist(&mut self, value: &Bson) -> bool {
+    self.bson_types.contains(&FieldType::get_type(&value))
   }
 
   pub fn get_path(name: String, path: &Option<String>) -> String {

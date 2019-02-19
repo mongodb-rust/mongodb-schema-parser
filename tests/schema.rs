@@ -70,7 +70,10 @@ fn it_combines_arrays_for_same_field_into_same_types_vector() {
   schema_parser.write(vec_json2).unwrap();
   assert_eq!(schema_parser.fields.len(), 1);
   assert_eq!(schema_parser.fields[0].types.len(), 1);
-  assert_eq!(schema_parser.fields[0].types[0].values.len(), 4);
+  let field_type = schema_parser.fields[0].types.get("Array");
+  if let Some(field_type) = field_type {
+    assert_eq!(field_type.values.len(), 4);
+  }
 }
 
 #[test]
