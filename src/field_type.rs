@@ -3,10 +3,9 @@ use super::{Bson, SchemaParser, ValueType};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 pub struct FieldType {
-  pub name: Option<String>,
   pub path: String,
   pub count: usize,
-  pub bsonType: Option<String>,
+  pub bson_type: String,
   pub probability: f32,
   pub values: Vec<ValueType>,
   pub has_duplicates: bool,
@@ -17,9 +16,8 @@ pub struct FieldType {
 impl FieldType {
   pub fn new(path: &str, value: &Bson) -> Self {
     FieldType {
-      name: FieldType::get_type(&value),
       path: path.to_string(),
-      bsonType: FieldType::get_type(&value),
+      bson_type: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
       // serde json and finalize methods should remove this field if vec is
@@ -67,10 +65,10 @@ impl FieldType {
 
   pub fn update_type(&mut self, parent_count: usize, value: &Bson) {
     let duplicates = self.get_duplicates();
-    let bson_type = self.bsonType.clone();
+    let bson_type = self.bson_type.clone();
     let path = self.path.clone();
 
-    if bson_type == Some(String::from("Document")) {
+    if &bson_type == "Document" {
       match &mut self.schema {
         Some(schema_parser) => match &value {
           Bson::Document(subdoc) => {
@@ -101,18 +99,18 @@ impl FieldType {
     }
   }
 
-  pub fn get_type(value: &Bson) -> Option<String> {
+  pub fn get_type(value: &Bson) -> String {
     match value {
       Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => {
-        Some(String::from("Number"))
+        "Number".to_string()
       }
-      Bson::Document(_) => Some(String::from("Document")),
-      Bson::ObjectId(_) => Some(String::from("ObjectId")),
-      Bson::Boolean(_) => Some(String::from("Boolean")),
-      Bson::String(_) => Some(String::from("String")),
-      Bson::Array(_) => Some(String::from("Array")),
-      Bson::Null => Some(String::from("Null")),
-      _ => None,
+      Bson::Document(_) => "Document".to_string(),
+      Bson::ObjectId(_) => "ObjectId".to_string(),
+      Bson::Boolean(_) => "Boolean".to_string(),
+      Bson::String(_) => "String".to_string(),
+      Bson::Array(_) => "Array".to_string(),
+      Bson::Null => "Null".to_string(),
+      _ => unimplemented!(),
     }
   }
 

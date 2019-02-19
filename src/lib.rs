@@ -227,16 +227,14 @@ impl SchemaParser {
       if field.name == key {
         let mut has_duplicates = false;
         field.update_count();
-        if !field.does_field_type_exist(&FieldType::get_type(&value)) {
+        if !field.does_field_type_exist(&value) {
           // field type doesn't exist in field.types, create a new field_type
           field.create_type(&value);
         } else {
-          // update field_type based on bson_type
-          for field_type in &mut field.types {
-            if field_type.bsonType == FieldType::get_type(&value) {
-              field_type.update_type(field.count, &value);
-              has_duplicates = field_type.get_duplicates();
-            }
+          let field_type = field.types.get_mut(&FieldType::get_type(&value));
+          if let Some(field_type) = field_type {
+            field_type.update_type(field.count, &value);
+            has_duplicates = field_type.get_duplicates();
           }
         }
         field.set_duplicates(has_duplicates);
@@ -321,7 +319,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"name\",\"count\":1,\"bsonType\":\"String\",\"probability\":1.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}]},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":[{\"name\":\"String\",\"path\":\"type\",\"count\":1,\"bsonType\":\"String\",\"probability\":1.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}]}]}");
+    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"name\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"type\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}}]}");
   }
 
   #[test]
@@ -387,7 +385,10 @@ mod tests {
       ValueType::Str("Chashu".to_owned()),
       ValueType::Str("Nori".to_owned()),
     ];
-    assert_eq!(schema_parser.fields[0].types[0].values, vec);
+    let field_type = schema_parser.fields[0].types.get("String");
+    if let Some(field_type) = field_type {
+      assert_eq!(field_type.values, vec);
+    }
   }
 
   #[bench]
