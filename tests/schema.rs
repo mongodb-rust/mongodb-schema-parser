@@ -28,32 +28,6 @@ static DOC: &str = r#"{
   "email": "corefinder88@hotmail.com"
 }"#;
 
-// static DOC2: &str = r#"{
-//   "_id": {
-//     "$oid": "50370aaefe4dce143735c679"
-//   },
-//   "membership_status": "INACTIVE",
-//   "name": "Logan Phillips",
-//   "gender": "male",
-//   "age": 23,
-//   "phone_no": 1272641335,
-//   "last_login": {
-//     "$date": "2011-02-16T02:11:10.000Z"
-//   },
-//   "address": {
-//     "city": "Oklahoma City, Oklahoma",
-//     "street": "276 Crescent Lake Rd",
-//     "postal_code": "48963",
-//     "country": "USA",
-//     "location": {
-//       "type": "Point",
-//       "coordinates": [-97.47815616033876, 35.41129245670654]
-//     }
-//   },
-//   "favorite_feature": "Aggregation",
-//   "email": "takeaway34@verizon.net"
-// }"#;
-
 #[test]
 fn it_creates_correct_number_of_fields() {
   let mut schema_parser = SchemaParser::new();
@@ -69,10 +43,13 @@ fn it_combines_arrays_for_same_field_into_same_types_vector() {
   schema_parser.write(vec_json1).unwrap();
   schema_parser.write(vec_json2).unwrap();
   assert_eq!(schema_parser.fields.len(), 1);
-  assert_eq!(schema_parser.fields[0].types.len(), 1);
-  let field_type = schema_parser.fields[0].types.get("Array");
-  if let Some(field_type) = field_type {
-    assert_eq!(field_type.values.len(), 4);
+  let field = schema_parser.fields.get("animals");
+  if let Some(field) = field {
+    assert_eq!(field.types.len(), 1);
+    let field_type = field.types.get("Array");
+    if let Some(field_type) = field_type {
+      assert_eq!(field_type.values.len(), 4);
+    }
   }
 }
 
@@ -83,10 +60,12 @@ fn it_creates_different_field_types() {
   let string_json = r#"{"phone_number": "+441234456789"}"#;
   schema_parser.write(number_json).unwrap();
   schema_parser.write(string_json).unwrap();
-  println!("{:?}", schema_parser);
-  assert_eq!(schema_parser.fields[0].count, 2);
-  assert_eq!(schema_parser.fields[0].bson_types.len(), 2);
-  assert_eq!(schema_parser.fields[0].types.len(), 2);
+  let field = schema_parser.fields.get("phone_number");
+  if let Some(field) = field {
+    assert_eq!(field.count, 2);
+    assert_eq!(field.bson_types.len(), 2);
+    assert_eq!(field.types.len(), 2);
+  }
 }
 
 #[test]

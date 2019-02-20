@@ -1,7 +1,6 @@
 use super::{Bson, SchemaParser, ValueType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[allow(non_snake_case)]
 pub struct FieldType {
   pub path: String,
   pub count: usize,

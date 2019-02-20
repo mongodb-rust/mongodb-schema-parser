@@ -73,6 +73,7 @@ extern crate wee_alloc;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+use std::collections::HashMap;
 use std::string::String;
 
 mod field;
@@ -88,7 +89,7 @@ use crate::value_type::ValueType;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SchemaParser {
   pub count: usize,
-  pub fields: Vec<Field>,
+  pub fields: HashMap<String, Field>,
 }
 
 // Need to wrap schema parser impl for wasm suppport.
@@ -117,8 +118,8 @@ impl SchemaParser {
   /// Wrapper method for `schema_parser.to_json()` to be used in JavaScript.
   /// `wasm_bindgen(js_name = "toJson")`
   #[wasm_bindgen(js_name = "toJson")]
-  pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
-    match self.to_json() {
+  pub fn wasm_to_json(&mut self) -> Result<JsValue, JsValue> {
+    match JsValue::from_serde(&self) {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       Ok(val) => Ok(val),
     }
@@ -138,7 +139,7 @@ impl SchemaParser {
   pub fn new() -> Self {
     SchemaParser {
       count: 0,
-      fields: Vec::new(),
+      fields: HashMap::new(),
     }
   }
 
@@ -201,62 +202,6 @@ impl SchemaParser {
   }
 
   #[inline]
-  pub fn update_count(&mut self) {
-    self.count += 1
-  }
-
-  #[inline]
-  fn add_to_fields(&mut self, field: Field) {
-    self.fields.push(field)
-  }
-
-  // why do i have to explicitly return true instead of just returning field.name == key
-  #[inline]
-  fn does_field_name_exist(&mut self, key: &str) -> bool {
-    for field in &mut self.fields {
-      if field.name == key {
-        return true;
-      }
-    }
-    false
-  }
-
-  #[inline]
-  fn update_field(&mut self, key: &str, value: &Bson) {
-    for field in &mut self.fields {
-      if field.name == key {
-        let mut has_duplicates = false;
-        field.update_count();
-        if !field.does_field_type_exist(&value) {
-          // field type doesn't exist in field.types, create a new field_type
-          field.create_type(&value);
-        } else {
-          let field_type = field.types.get_mut(&FieldType::get_type(&value));
-          if let Some(field_type) = field_type {
-            field_type.update_type(field.count, &value);
-            has_duplicates = field_type.get_duplicates();
-          }
-        }
-        field.set_duplicates(has_duplicates);
-        field.set_probability(self.count);
-      }
-    }
-  }
-
-  #[inline]
-  fn update_or_create_field(&mut self, key: String, value: &Bson, path: &str) {
-    // check if we already have a field for this key;
-    // if name exist, call self.update_field, otherwise create new
-    if self.does_field_name_exist(&key) {
-      self.update_field(&key, &value);
-    } else {
-      let mut field = Field::new(key, &path);
-      field.create_type(&value);
-      self.add_to_fields(field);
-    }
-  }
-
-  #[inline]
   fn generate_field(&mut self, doc: Document, path: &Option<String>) {
     for (key, value) in doc {
       self.update_or_create_field(
@@ -265,6 +210,45 @@ impl SchemaParser {
         &Field::get_path(key.to_string(), path),
       )
     }
+  }
+
+  #[inline]
+  fn update_or_create_field(&mut self, key: String, value: &Bson, path: &str) {
+    // check if we already have a field for this key;
+    // if name exist, call self.update_field, otherwise create new
+    if self.fields.contains_key(&key) {
+      self.update_field(&key, &value);
+    } else {
+      let mut field = Field::new(key, &path);
+      field.create_type(&value);
+      self.fields.insert(field.name.to_string(), field);
+    }
+  }
+
+  #[inline]
+  fn update_field(&mut self, key: &str, value: &Bson) {
+    let field = self.fields.get_mut(key);
+    if let Some(field) = field {
+      let mut has_duplicates = false;
+      field.update_count();
+      if !field.does_field_type_exist(&value) {
+        // field type doesn't exist in field.types, create a new field_type
+        field.create_type(&value);
+      } else {
+        let field_type = field.types.get_mut(&FieldType::get_type(&value));
+        if let Some(field_type) = field_type {
+          field_type.update_type(field.count, &value);
+          has_duplicates = field_type.get_duplicates();
+        }
+      }
+      field.set_duplicates(has_duplicates);
+      field.set_probability(self.count);
+    }
+  }
+
+  #[inline]
+  fn update_count(&mut self) {
+    self.count += 1
   }
 }
 
@@ -319,7 +303,7 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":[{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"name\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}},{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"type\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}}]}");
+    assert_eq!(output, "{\"count\":1,\"fields\":{\"type\":{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"type\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}},\"name\":{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"name\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}}}}");
   }
 
   #[test]
@@ -329,49 +313,6 @@ mod tests {
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     assert_eq!(schema_parser.count, 1);
-  }
-
-  #[test]
-  fn it_adds_to_fields() {
-    let mut schema_parser = SchemaParser::new();
-    assert_eq!(schema_parser.fields.len(), 0);
-
-    let name = "Nori".to_string();
-    let path = "Nori.cat";
-    let field = Field::new(name, &path);
-
-    schema_parser.add_to_fields(field);
-    assert_eq!(schema_parser.fields.len(), 1);
-  }
-
-  #[bench]
-  fn bench_it_adds_to_fields(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
-    let path = "Nori.cat";
-
-    bench.iter(|| {
-      let field = Field::new("Nori".to_string(), &path);
-      let n = test::black_box(field);
-      schema_parser.add_to_fields(n)
-    });
-  }
-
-  #[test]
-  fn it_checks_if_field_name_exists() {
-    let mut schema_parser = SchemaParser::new();
-    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
-    assert_eq!(schema_parser.does_field_name_exist("name"), true);
-    assert_eq!(schema_parser.does_field_name_exist("colour"), false);
-  }
-
-  #[bench]
-  fn bench_it_check_if_field_name_exists(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
-    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
-
-    bench.iter(|| schema_parser.does_field_name_exist("name"));
   }
 
   #[test]
@@ -385,9 +326,12 @@ mod tests {
       ValueType::Str("Chashu".to_owned()),
       ValueType::Str("Nori".to_owned()),
     ];
-    let field_type = schema_parser.fields[0].types.get("String");
-    if let Some(field_type) = field_type {
-      assert_eq!(field_type.values, vec);
+    let field = schema_parser.fields.get("name");
+    if let Some(field) = field {
+      let field_type = field.types.get("String");
+      if let Some(field_type) = field_type {
+        assert_eq!(field_type.values, vec);
+      }
     }
   }
 
@@ -410,8 +354,16 @@ mod tests {
     };
     schema_parser.generate_field(doc, &None);
     assert_eq!(schema_parser.fields.len(), 2);
-    assert_eq!(schema_parser.fields[0].name, "name");
-    assert_eq!(schema_parser.fields[1].name, "type");
+    if let Some(f) = schema_parser.fields.get("name") {
+      if let Some(t) = f.types.get("String") {
+        assert_eq!(t.values[0], ValueType::Str("Rey".to_string()));
+      }
+    }
+    if let Some(f) = schema_parser.fields.get("type") {
+      if let Some(t) = f.types.get("String") {
+        assert_eq!(t.values[0], ValueType::Str("Dog".to_string()));
+      }
+    }
   }
 
   #[bench]
