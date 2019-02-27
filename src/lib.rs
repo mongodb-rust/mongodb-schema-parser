@@ -50,7 +50,6 @@
 #![cfg_attr(feature = "nightly", deny(unsafe_code))]
 #![allow(clippy::new_without_default_derive)]
 #![feature(test)]
-//#![cfg_attr(test, deny(warnings))]
 
 extern crate failure;
 extern crate test;
@@ -88,8 +87,8 @@ use crate::value_type::ValueType;
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SchemaParser {
-  pub count: usize,
-  pub fields: HashMap<String, Field>,
+  count: usize,
+  fields: HashMap<String, Field>,
 }
 
 // Need to wrap schema parser impl for wasm suppport.
@@ -118,8 +117,8 @@ impl SchemaParser {
   /// Wrapper method for `schema_parser.to_json()` to be used in JavaScript.
   /// `wasm_bindgen(js_name = "toJson")`
   #[wasm_bindgen(js_name = "toJson")]
-  pub fn wasm_to_json(&mut self) -> Result<JsValue, JsValue> {
-    match JsValue::from_serde(&self) {
+  pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
+    match self.to_json() {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       Ok(val) => Ok(val),
     }
@@ -392,5 +391,47 @@ mod tests {
       let n = test::black_box(doc);
       schema_parser.generate_field(n, &Some("treats".to_owned()))
     });
+  }
+
+  #[test]
+  fn it_combines_arrays_for_same_field_into_same_types_vector() {
+    let mut schema_parser = SchemaParser::new();
+    let vec_json1 = r#"{"animals": ["cat", "dog"]}"#;
+    let vec_json2 = r#"{"animals": ["wallaby", "bird"]}"#;
+    schema_parser.write(vec_json1).unwrap();
+    schema_parser.write(vec_json2).unwrap();
+    assert_eq!(schema_parser.fields.len(), 1);
+    let field = schema_parser.fields.get("animals");
+    if let Some(field) = field {
+      assert_eq!(field.types.len(), 1);
+      let field_type = field.types.get("Array");
+      if let Some(field_type) = field_type {
+        assert_eq!(field_type.values.len(), 4);
+      }
+    }
+  }
+
+  #[test]
+  fn it_creates_different_field_types() {
+    let mut schema_parser = SchemaParser::new();
+    let number_json = r#"{"phone_number": 491234568789}"#;
+    let string_json = r#"{"phone_number": "+441234456789"}"#;
+    schema_parser.write(number_json).unwrap();
+    schema_parser.write(string_json).unwrap();
+    let field = schema_parser.fields.get("phone_number");
+    if let Some(field) = field {
+      assert_eq!(field.count, 2);
+      assert_eq!(field.bson_types.len(), 2);
+      assert_eq!(field.types.len(), 2);
+    }
+  }
+
+  #[test]
+  fn it_creates_field_type_for_null() {
+    let mut schema_parser = SchemaParser::new();
+    let null_json = r#"{"phone_number": Null}"#;
+    schema_parser.write(null_json).unwrap();
+    let field = schema_parser.fields.get("phone_number");
+    println!("{:?}", field);
   }
 }

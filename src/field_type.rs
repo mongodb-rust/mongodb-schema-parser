@@ -6,8 +6,10 @@ pub struct FieldType {
   pub count: usize,
   pub bson_type: String,
   pub probability: f32,
+  #[serde(skip_serializing_if = "Vec::is_empty")]
   pub values: Vec<ValueType>,
   pub has_duplicates: bool,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub schema: Option<SchemaParser>,
   pub unique: Option<usize>,
 }
@@ -19,8 +21,6 @@ impl FieldType {
       bson_type: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
-      // serde json and finalize methods should remove this field if vec is
-      // empty
       values: Vec::new(),
       has_duplicates: false,
       // serde json should remove when null
