@@ -297,15 +297,6 @@ mod tests {
   }
 
   #[test]
-  fn it_formats_to_json() {
-    let mut schema_parser = SchemaParser::new();
-    let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
-    let output = schema_parser.to_json().unwrap();
-    assert_eq!(output, "{\"count\":1,\"fields\":{\"type\":{\"name\":\"type\",\"path\":\"type\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"type\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Cat\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}},\"name\":{\"name\":\"name\",\"path\":\"name\",\"count\":1,\"bson_types\":[\"String\"],\"probability\":0.0,\"has_duplicates\":false,\"types\":{\"String\":{\"path\":\"name\",\"count\":1,\"bson_type\":\"String\",\"probability\":1.0,\"values\":[\"Chashu\"],\"has_duplicates\":false,\"schema\":null,\"unique\":null}}}}}");
-  }
-
-  #[test]
   fn it_updates_count() {
     let mut schema_parser = SchemaParser::new();
     assert_eq!(schema_parser.count, 0);
@@ -429,9 +420,11 @@ mod tests {
   #[test]
   fn it_creates_field_type_for_null() {
     let mut schema_parser = SchemaParser::new();
-    let null_json = r#"{"phone_number": Null}"#;
+    let null_json = r#"{"phone_number": null}"#;
     schema_parser.write(null_json).unwrap();
     let field = schema_parser.fields.get("phone_number");
-    println!("{:?}", field);
+    if let Some(field) = field {
+      assert_eq!(field.bson_types[0], "Null");
+    }
   }
 }
