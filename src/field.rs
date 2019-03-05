@@ -50,12 +50,35 @@ impl Field {
     }
   }
 
-  pub fn set_probability(&mut self, parent_count: usize) {
-    self.probability = self.count as f32 / parent_count as f32
-  }
-
   pub fn update_count(&mut self) {
     self.count += 1
+  }
+
+  pub fn update_for_missing(&mut self, missing: usize) {
+    // create new field_types of "Null" for missing fields.
+    let mut null_field_type = FieldType::new(&self.path, &Bson::Null)
+      .add_to_type(&Bson::Null, self.count);
+    null_field_type.count = missing;
+    self
+      .types
+      .insert("Null".to_string(), null_field_type.to_owned());
+
+    // If bson_types includes a Document, find that document and let its schema
+    // field update its own missing fields.
+    let doc_type = "Document".to_string();
+    if self.bson_types.contains(&doc_type) {
+      let field_type = self.types.get_mut(&doc_type);
+      if let Some(field_type) = field_type {
+        match &mut field_type.schema {
+          Some(sch) => sch.finalize_schema(),
+          None => return,
+        };
+      }
+    }
+  }
+
+  pub fn set_probability(&mut self, parent_count: usize) {
+    self.probability = self.count as f32 / parent_count as f32
   }
 
   pub fn set_duplicates(&mut self, duplicates: bool) {
