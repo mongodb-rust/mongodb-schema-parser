@@ -177,10 +177,8 @@ impl SchemaParser {
   /// let schema = schema_parser.read();
   /// println!("{:?}", schema);
   /// ```
-  // might want to rename this to finalize depending on how much manipulation
-  // will have to be done later on.
-  pub fn read(self) -> SchemaParser {
-    self
+  pub fn read(&mut self) -> SchemaParser {
+    self.finalize_schema().to_owned()
   }
 
   /// Returns a serde_json string. This should be called after all values were
@@ -243,6 +241,20 @@ impl SchemaParser {
       field.set_duplicates(has_duplicates);
       field.set_probability(self.count);
     }
+  }
+
+  fn finalize_schema(&mut self) -> &mut SchemaParser {
+    for field in self.fields.values_mut() {
+      let missing = self.count - field.count;
+      if missing > 0 {
+        field.update_for_missing(missing);
+      }
+    }
+    self
+
+    // should check if a field is unique for each field_type and set_unique
+    // should check if field_type has duplicates, set_duplicates on field_tyep,
+    // and set_duplicates on parent.
   }
 
   #[inline]
