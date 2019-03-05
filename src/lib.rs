@@ -145,7 +145,7 @@ impl SchemaParser {
   /// Writes json-like string slices SchemaParser's fields vector.
   ///
   /// # Arguments
-  /// * `json` - A json-like string slice. i.e { "name": "Nori", "type": "Cat"}
+  /// * `json` - A json-like string slice. i.e `{ "name": "Nori", "type": "Cat"}`
   ///
   /// # Examples
   /// ```
@@ -245,9 +245,22 @@ impl SchemaParser {
 
   fn finalize_schema(&mut self) -> &mut SchemaParser {
     for field in self.fields.values_mut() {
-      let missing = self.count - field.count;
+      let missing: usize = self.count - field.count;
       if missing > 0 {
         field.update_for_missing(missing);
+      }
+
+      // If bson_types includes a Document, find that document and let its schema
+      // field update its own missing fields.
+      let doc_type = "Document".to_string();
+      if field.bson_types.contains(&doc_type) {
+        let field_type = field.types.get_mut(&doc_type);
+        if let Some(field_type) = field_type {
+          let schema = &mut field_type.schema;
+          if let Some(schema) = schema {
+            schema.finalize_schema();
+          }
+        }
       }
     }
     self
@@ -307,6 +320,28 @@ mod tests {
     assert_eq!(output.count, 1);
     assert_eq!(output.fields.len(), 2);
   }
+
+  #[test]
+  fn it_adjusts_missing_count() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str1 = r#"{"name": "Nori", "type": "Cat"}"#;
+    let json_str2 = r#"{"name": "Rey"}"#;
+    schema_parser.write(&json_str1).unwrap();
+    schema_parser.write(&json_str2).unwrap();
+    let output = schema_parser.read();
+    println!("{:?}", output);
+  }
+
+  // #[test]
+  // fn it_adjusts_missing_count_nested_document() {
+  //   let mut schema_parser = SchemaParser::new();
+  //   let json_str1 = r#"{"name": "Nori", "type": {"breed": "Norwegian Forest", "type": "cat"}}"#;
+  //   let json_str2 = r#"{"name": "Rey", "type": {"breed": "Viszla"}}"#;
+  //   schema_parser.write(&json_str1).unwrap();
+  //   schema_parser.write(&json_str2).unwrap();
+  //   let output = schema_parser.read();
+  //   println!("{:?}", output);
+  // }
 
   #[test]
   fn it_updates_count() {
