@@ -58,23 +58,11 @@ impl Field {
     // create new field_types of "Null" for missing fields.
     let mut null_field_type = FieldType::new(&self.path, &Bson::Null)
       .add_to_type(&Bson::Null, self.count);
+    self.bson_types.push(null_field_type.bson_type.clone());
     null_field_type.count = missing;
     self
       .types
       .insert("Null".to_string(), null_field_type.to_owned());
-
-    // If bson_types includes a Document, find that document and let its schema
-    // field update its own missing fields.
-    let doc_type = "Document".to_string();
-    if self.bson_types.contains(&doc_type) {
-      let field_type = self.types.get_mut(&doc_type);
-      if let Some(field_type) = field_type {
-        match &mut field_type.schema {
-          Some(sch) => sch.finalize_schema(),
-          None => return,
-        };
-      }
-    }
   }
 
   pub fn set_probability(&mut self, parent_count: usize) {
