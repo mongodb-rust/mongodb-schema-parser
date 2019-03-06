@@ -38,8 +38,8 @@ impl Field {
     self.bson_types.contains(&FieldType::get_type(&value))
   }
 
-  pub fn get_path(name: String, path: &Option<String>) -> String {
-    match &path {
+  pub fn get_path(name: String, path: Option<String>) -> String {
+    match path {
       None => name,
       Some(path) => {
         let mut path = path.clone();
@@ -54,6 +54,10 @@ impl Field {
     self.count += 1
   }
 
+  pub fn update_count_by(&mut self, num: usize) {
+    self.count += num
+  }
+
   pub fn update_for_missing(&mut self, missing: usize) {
     // create new field_types of "Null" for missing fields.
     let mut null_field_type = FieldType::new(&self.path, &Bson::Null)
@@ -63,6 +67,7 @@ impl Field {
     self
       .types
       .insert("Null".to_string(), null_field_type.to_owned());
+    self.update_count_by(missing);
   }
 
   pub fn set_probability(&mut self, parent_count: usize) {
@@ -100,7 +105,7 @@ mod tests {
 
   #[test]
   fn it_gets_path_if_none() {
-    let path = Field::get_path(String::from("address"), &None);
+    let path = Field::get_path(String::from("address"), None);
     assert_eq!(path, String::from("address"));
   }
 
@@ -108,7 +113,7 @@ mod tests {
   fn it_gets_path_if_some() {
     let path = Field::get_path(
       String::from("postal_code"),
-      &Some(String::from("address")),
+      Some(String::from("address")),
     );
     assert_eq!(path, String::from("address.postal_code"));
   }
@@ -118,7 +123,7 @@ mod tests {
     bench.iter(|| {
       Field::get_path(
         String::from("postal_code"),
-        &Some(String::from("address")),
+        Some(String::from("address")),
       )
     });
   }

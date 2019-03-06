@@ -91,40 +91,6 @@ pub struct SchemaParser {
   fields: HashMap<String, Field>,
 }
 
-// Need to wrap schema parser impl for wasm suppport.
-// Here we are wrapping the exported to JS land methods and mathing on Result to
-// turn the error message to JsValue.
-#[wasm_bindgen]
-impl SchemaParser {
-  /// Wrapper method for `SchemaParser::new()` to be used in JavaScript.
-  /// `wasm_bindgen(js_name = "new")`
-  #[wasm_bindgen(constructor)]
-  #[wasm_bindgen(js_name = "new")]
-  pub fn wasm_new() -> Self {
-    Self::new()
-  }
-
-  /// Wrapper method for `schema_parser.write()` to be used in JavaScript.
-  /// `wasm_bindgen(js_name = "write")`
-  #[wasm_bindgen(js_name = "write")]
-  pub fn wasm_write(&mut self, json: &str) -> Result<(), JsValue> {
-    match self.write(json) {
-      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
-      _ => Ok(()),
-    }
-  }
-
-  /// Wrapper method for `schema_parser.to_json()` to be used in JavaScript.
-  /// `wasm_bindgen(js_name = "toJson")`
-  #[wasm_bindgen(js_name = "toJson")]
-  pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
-    match self.to_json() {
-      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
-      Ok(val) => Ok(val),
-    }
-  }
-}
-
 impl SchemaParser {
   /// Returns a new instance of Schema Parser populated with zero `count` and an
   /// empty `fields` vector.
@@ -161,7 +127,7 @@ impl SchemaParser {
     // should do a match for NoneError
     let doc = bson.as_document().unwrap().to_owned();
     self.update_count();
-    self.generate_field(doc, &None);
+    self.generate_field(doc, None, None);
     Ok(())
   }
 
@@ -178,7 +144,8 @@ impl SchemaParser {
   /// println!("{:?}", schema);
   /// ```
   pub fn read(&mut self) -> SchemaParser {
-    self.finalize_schema().to_owned()
+    self.finalize_schema();
+    self.to_owned()
   }
 
   /// Returns a serde_json string. This should be called after all values were
@@ -199,13 +166,18 @@ impl SchemaParser {
   }
 
   #[inline]
-  fn generate_field(&mut self, doc: Document, path: &Option<String>) {
+  fn generate_field(
+    &mut self,
+    doc: Document,
+    path: Option<String>,
+    count: Option<&usize>,
+  ) {
+    if let Some(_count) = count {
+      self.update_count();
+    }
     for (key, value) in doc {
-      self.update_or_create_field(
-        key.to_string(),
-        &value,
-        &Field::get_path(key.to_string(), path),
-      )
+      let current_path = Field::get_path(key.to_string(), path.to_owned());
+      self.update_or_create_field(key.to_string(), &value, &current_path)
     }
   }
 
@@ -243,27 +215,23 @@ impl SchemaParser {
     }
   }
 
-  fn finalize_schema(&mut self) -> &mut SchemaParser {
+  fn finalize_schema(&mut self) {
     for field in self.fields.values_mut() {
-      let missing: usize = self.count - field.count;
-      if missing > 0 {
-        field.update_for_missing(missing);
-      }
-
       // If bson_types includes a Document, find that document and let its schema
       // field update its own missing fields.
-      let doc_type = "Document".to_string();
-      if field.bson_types.contains(&doc_type) {
-        let field_type = field.types.get_mut(&doc_type);
-        if let Some(field_type) = field_type {
-          let schema = &mut field_type.schema;
-          if let Some(schema) = schema {
-            schema.finalize_schema();
-          }
+      let field_type = field.types.get_mut(&"Document".to_string());
+      if let Some(field_type) = field_type {
+        let schema = &mut field_type.schema;
+        if let Some(schema) = schema {
+          return schema.finalize_schema();
         }
       }
+
+      let missing = self.count - field.count;
+      if missing > 0 {
+        return field.update_for_missing(missing);
+      }
     }
-    self
 
     // should check if a field is unique for each field_type and set_unique
     // should check if field_type has duplicates, set_duplicates on field_tyep,
@@ -273,6 +241,66 @@ impl SchemaParser {
   #[inline]
   fn update_count(&mut self) {
     self.count += 1
+  }
+}
+
+// Need to wrap schema parser impl for wasm suppport.
+// Here we are wrapping the exported to JS land methods and mathing on Result to
+// turn the error message to JsValue.
+#[wasm_bindgen]
+impl SchemaParser {
+  /// Wrapper method for `SchemaParser::new()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "new")`
+  ///
+  /// ```js, ignore
+  /// import { SchemaParser } from "mongodb-schema-parser";
+  ///
+  /// var schemaParser = new SchemaParser()
+  /// ````
+  #[wasm_bindgen(constructor)]
+  #[wasm_bindgen(js_name = "new")]
+  pub fn wasm_new() -> Self {
+    Self::new()
+  }
+
+  /// Wrapper method for `schema_parser.write()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "write")`
+  ///
+  ///
+  /// ```js, ignore
+  /// import { SchemaParser } from "mongodb-schema-parser"
+  ///
+  /// var schemaParser = new SchemaParser()
+  /// var json = "{"name": "Nori", "type": "Cat"}"
+  /// schemaParser.write(json)
+  /// ````
+  #[wasm_bindgen(js_name = "write")]
+  pub fn wasm_write(&mut self, json: &str) -> Result<(), JsValue> {
+    match self.write(json) {
+      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
+      _ => Ok(()),
+    }
+  }
+
+  /// Wrapper method for `schema_parser.to_json()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "toJson")`
+  ///
+  /// ```js, ignore
+  /// import { SchemaParser } from "mongodb-schema-parser"
+  ///
+  /// var schemaParser = new SchemaParser()
+  /// var json = "{"name": "Nori", "type": "Cat"}"
+  /// schemaParser.write(json)
+  /// // get the result as a json string
+  /// var result = schemaParser.toJson()
+  /// console.log(result) //
+  /// ````
+  #[wasm_bindgen(js_name = "toJson")]
+  pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
+    match self.to_json() {
+      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
+      Ok(val) => Ok(val),
+    }
   }
 }
 
@@ -309,39 +337,71 @@ mod tests {
     bench.iter(|| schema_parser.write(&json_str));
   }
 
-  // since read() only returns self right now, the test is the same as
-  // it_writes()
   #[test]
   fn it_reads() {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
     schema_parser.write(&json_str).unwrap();
     let output = schema_parser.read();
+    println!("{:?}", output);
     assert_eq!(output.count, 1);
     assert_eq!(output.fields.len(), 2);
   }
 
   #[test]
-  fn it_adjusts_missing_count() {
+  fn it_adjusts_missing() {
     let mut schema_parser = SchemaParser::new();
     let json_str1 = r#"{"name": "Nori", "type": "Cat"}"#;
     let json_str2 = r#"{"name": "Rey"}"#;
+    let json_str3 = r#"{"name": "Chashu"}"#;
+    schema_parser.write(&json_str1).unwrap();
+    schema_parser.write(&json_str2).unwrap();
+    schema_parser.write(&json_str3).unwrap();
+    let mut output = schema_parser.read();
+    let type_field = output.fields.get_mut("type");
+    if let Some(type_field) = type_field {
+      assert_eq!(type_field.count, 3);
+      assert!(type_field.bson_types.contains(&"Null".to_string()));
+
+      let null_field_type = type_field.types.get_mut("Null");
+      if let Some(null_field_type) = null_field_type {
+        assert_eq!(null_field_type.count, 2)
+      }
+    }
+  }
+
+  #[test]
+  fn it_adjusts_missing_with_nested_document() {
+    let mut schema_parser = SchemaParser::new();
+    let json_str1 = r#"{"name": "Nori", "type": {"breed": "Norwegian Forest", "type": "cat"}}"#;
+    let json_str2 = r#"{"name": "Rey", "type": {"breed": "Viszla"}}"#;
     schema_parser.write(&json_str1).unwrap();
     schema_parser.write(&json_str2).unwrap();
     let output = schema_parser.read();
-    println!("{:?}", output);
-  }
+    let type_field = output.fields.get("type");
+    if let Some(type_field) = type_field {
+      let doc = type_field.types.get("Document");
+      if let Some(doc) = doc {
+        assert_eq!(doc.count, 2);
 
-  // #[test]
-  // fn it_adjusts_missing_count_nested_document() {
-  //   let mut schema_parser = SchemaParser::new();
-  //   let json_str1 = r#"{"name": "Nori", "type": {"breed": "Norwegian Forest", "type": "cat"}}"#;
-  //   let json_str2 = r#"{"name": "Rey", "type": {"breed": "Viszla"}}"#;
-  //   schema_parser.write(&json_str1).unwrap();
-  //   schema_parser.write(&json_str2).unwrap();
-  //   let output = schema_parser.read();
-  //   println!("{:?}", output);
-  // }
+        let schema = &doc.schema;
+        if let Some(schema) = schema {
+          assert_eq!(schema.count, 2);
+
+          let type_schema_field = schema.fields.get("type");
+          if let Some(type_schema_field) = type_schema_field {
+            assert_eq!(type_schema_field.count, 2);
+            assert!(type_schema_field.bson_types.contains(&"Null".to_string()));
+
+            let null_type_schema_field = type_schema_field.types.get("Null");
+            if let Some(null_type_schema_field) = null_type_schema_field {
+              assert_eq!(null_type_schema_field.count, 1)
+            }
+          }
+        }
+      }
+    }
+  }
 
   #[test]
   fn it_updates_count() {
@@ -389,7 +449,7 @@ mod tests {
       "name": "Rey",
       "type": "Dog"
     };
-    schema_parser.generate_field(doc, &None);
+    schema_parser.generate_field(doc, None, None);
     assert_eq!(schema_parser.fields.len(), 2);
     if let Some(f) = schema_parser.fields.get("name") {
       if let Some(t) = f.types.get("String") {
@@ -413,7 +473,7 @@ mod tests {
         "type": "Dog"
       };
       let n = test::black_box(doc);
-      schema_parser.generate_field(n, &None)
+      schema_parser.generate_field(n, None, None)
     });
   }
 
@@ -427,7 +487,7 @@ mod tests {
         "type": "Dog"
       };
       let n = test::black_box(doc);
-      schema_parser.generate_field(n, &Some("treats".to_owned()))
+      schema_parser.generate_field(n, Some("treats".to_owned()), None)
     });
   }
 
