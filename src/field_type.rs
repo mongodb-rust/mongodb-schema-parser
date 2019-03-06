@@ -47,8 +47,11 @@ impl FieldType {
       }
       Bson::Document(subdoc) => {
         let mut schema_parser = SchemaParser::new();
-        schema_parser
-          .generate_field(subdoc.to_owned(), &Some(self.path.clone()));
+        schema_parser.generate_field(
+          subdoc.to_owned(),
+          Some(self.path.clone()),
+          Some(&self.count),
+        );
         self.set_schema(schema_parser);
         self
       }
@@ -70,9 +73,11 @@ impl FieldType {
     if &bson_type == "Document" {
       match &mut self.schema {
         Some(schema_parser) => match &value {
-          Bson::Document(subdoc) => {
-            schema_parser.generate_field(subdoc.to_owned(), &Some(path))
-          }
+          Bson::Document(subdoc) => schema_parser.generate_field(
+            subdoc.to_owned(),
+            Some(path),
+            Some(&self.count),
+          ),
           _ => unimplemented!(),
         },
         None => unimplemented!(),
