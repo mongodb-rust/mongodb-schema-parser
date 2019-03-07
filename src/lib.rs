@@ -144,7 +144,7 @@ impl SchemaParser {
   /// println!("{:?}", schema);
   /// ```
   pub fn read(&mut self) -> SchemaParser {
-    self.finalize_schema();
+    self.finalise_schema();
     self.to_owned()
   }
 
@@ -198,24 +198,22 @@ impl SchemaParser {
   fn update_field(&mut self, key: &str, value: &Bson) {
     let field = self.fields.get_mut(key);
     if let Some(field) = field {
-      let mut has_duplicates = false;
       field.update_count();
       if !field.does_field_type_exist(&value) {
         // field type doesn't exist in field.types, create a new field_type
         field.create_type(&value);
       } else {
-        let field_type = field.types.get_mut(&FieldType::get_type(&value));
+        let type_val = FieldType::get_type(&value);
+        let field_type = field.types.get_mut(&type_val);
         if let Some(field_type) = field_type {
-          field_type.update_type(field.count, &value);
-          has_duplicates = field_type.get_duplicates();
+          field_type.update_type(&value);
         }
       }
-      field.set_duplicates(has_duplicates);
-      field.set_probability(self.count);
     }
   }
 
-  fn finalize_schema(&mut self) {
+  #[inline]
+  fn finalise_schema(&mut self) {
     for field in self.fields.values_mut() {
       // If bson_types includes a Document, find that document and let its schema
       // field update its own missing fields.
@@ -223,19 +221,19 @@ impl SchemaParser {
       if let Some(field_type) = field_type {
         let schema = &mut field_type.schema;
         if let Some(schema) = schema {
-          return schema.finalize_schema();
+          return schema.finalise_schema();
         }
       }
 
+      // create new field_types as Null for missing fields
       let missing = self.count - field.count;
       if missing > 0 {
-        return field.update_for_missing(missing);
+        field.update_for_missing(missing);
       }
-    }
 
-    // should check if a field is unique for each field_type and set_unique
-    // should check if field_type has duplicates, set_duplicates on field_tyep,
-    // and set_duplicates on parent.
+      // check for duplicates, unique values, set probability
+      field.finalise_field(self.count);
+    }
   }
 
   #[inline]

@@ -65,8 +65,7 @@ impl FieldType {
     }
   }
 
-  pub fn update_type(&mut self, parent_count: usize, value: &Bson) {
-    let duplicates = self.get_duplicates();
+  pub fn update_type(&mut self, value: &Bson) {
     let bson_type = self.bson_type.clone();
     let path = self.path.clone();
 
@@ -85,10 +84,7 @@ impl FieldType {
     }
 
     self.update_count();
-    self.set_probability(parent_count);
     self.update_value(&value);
-    self.set_unique();
-    self.set_duplicates(duplicates)
   }
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
@@ -101,6 +97,12 @@ impl FieldType {
       Bson::I64(num) => Some(ValueType::I64(*num)),
       _ => None,
     }
+  }
+
+  pub fn finalise_type(&mut self, parent_count: usize) {
+    self.set_probability(parent_count);
+    self.set_unique();
+    self.set_duplicates();
   }
 
   pub fn get_type(value: &Bson) -> String {
@@ -118,7 +120,7 @@ impl FieldType {
     }
   }
 
-  pub fn get_duplicates(&mut self) -> bool {
+  fn get_duplicates(&mut self) -> bool {
     let unique = self.get_unique();
     let total_values = self.values.len();
     (total_values - unique) != 0
@@ -131,7 +133,8 @@ impl FieldType {
     vec.len()
   }
 
-  pub fn set_duplicates(&mut self, duplicates: bool) {
+  pub fn set_duplicates(&mut self) {
+    let duplicates = self.get_duplicates();
     self.has_duplicates = duplicates
   }
 
@@ -338,7 +341,9 @@ mod tests {
   fn it_sets_duplicates() {
     let mut field_type =
       FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    field_type.set_duplicates(true);
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type.values.push(ValueType::Str("Berlin".to_string()));
+    field_type.set_duplicates();
     assert_eq!(field_type.has_duplicates, true)
   }
 
@@ -346,7 +351,7 @@ mod tests {
   fn bench_it_sets_duplicates(bench: &mut Bencher) {
     let mut field_type =
       FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    bench.iter(|| field_type.set_duplicates(true));
+    bench.iter(|| field_type.set_duplicates());
   }
 
   #[test]

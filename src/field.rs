@@ -8,7 +8,6 @@ pub struct Field {
   pub count: usize,
   pub bson_types: Vec<String>,
   pub probability: f32,
-  pub has_duplicates: bool,
   pub types: HashMap<String, FieldType>,
 }
 
@@ -20,7 +19,6 @@ impl Field {
       path: path.to_string(),
       bson_types: Vec::new(),
       probability: 0.0,
-      has_duplicates: false,
       types: HashMap::new(),
     }
   }
@@ -50,12 +48,11 @@ impl Field {
     }
   }
 
-  pub fn update_count(&mut self) {
-    self.count += 1
-  }
-
-  pub fn update_count_by(&mut self, num: usize) {
-    self.count += num
+  pub fn finalise_field(&mut self, parent_count: usize) {
+    self.set_probability(parent_count);
+    for field_type in self.types.values_mut() {
+      field_type.finalise_type(self.count);
+    }
   }
 
   pub fn update_for_missing(&mut self, missing: usize) {
@@ -67,15 +64,21 @@ impl Field {
     self
       .types
       .insert("Null".to_string(), null_field_type.to_owned());
+    // need to update internal field count, since otherwise on the next
+    // iteration we will get integer overflow
     self.update_count_by(missing);
   }
 
-  pub fn set_probability(&mut self, parent_count: usize) {
-    self.probability = self.count as f32 / parent_count as f32
+  pub fn update_count(&mut self) {
+    self.count += 1
   }
 
-  pub fn set_duplicates(&mut self, duplicates: bool) {
-    self.has_duplicates = duplicates
+  fn update_count_by(&mut self, num: usize) {
+    self.count += num
+  }
+
+  fn set_probability(&mut self, parent_count: usize) {
+    self.probability = self.count as f32 / parent_count as f32
   }
 }
 
@@ -126,19 +129,6 @@ mod tests {
         Some(String::from("address")),
       )
     });
-  }
-
-  #[test]
-  fn it_sets_duplicates() {
-    let mut field = Field::new("Rey".to_string(), "Rey.dog");
-    field.set_duplicates(true);
-    assert_eq!(field.has_duplicates, true)
-  }
-
-  #[bench]
-  fn bench_it_sets_duplicates(bench: &mut Bencher) {
-    let mut field = Field::new("Rey".to_string(), "Rey.dog");
-    bench.iter(|| field.set_duplicates(true))
   }
 
   #[test]
