@@ -20,6 +20,7 @@ serde_derive = "^1.0.59"
 bson = { git = "https://github.com/lrlna/bson-rs", branch = "wasm-suport" } 
 wee_alloc = "0.4.2"
 console_error_panic_hook = "0.1.5"
+js-sys = "0.3.16"
 
 [dependencies.wasm-bindgen]
 version = "^0.2.37"
