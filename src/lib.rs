@@ -14,7 +14,7 @@
 //!   let file: Vec<&str> = file.trim().split("\n").collect();
 //!   let mut schema_parser = SchemaParser::new();
 //!   for json in file {
-//!     schema_parser.write(&json).unwrap();
+//!     schema_parser.write_json(&json).unwrap();
 //!   }
 //!   let result = schema_parser.read();
 //! }
@@ -35,7 +35,7 @@
 //!     for (var i = 0; i < json.length; i++) {
 //!       if (json[i] !== '') {
 //!         // feed the parser json line by line
-//!         schemaParser.write(json[i])
+//!         schemaParser.writeJson(json[i])
 //!       }
 //!     }
 //!     // get the result as a json string
@@ -64,6 +64,7 @@ extern crate serde;
 extern crate serde_json;
 use serde_json::Value;
 
+use js_sys;
 use wasm_bindgen::prelude::*;
 
 // using custom allocator which is built specifically for wasm; makes it smaller
@@ -118,14 +119,39 @@ impl SchemaParser {
   /// use mongodb_schema_parser::SchemaParser;
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
-  /// schema_parser.write(&json);
+  /// schema_parser.write_json(&json);
   /// ```
   #[inline]
-  pub fn write(&mut self, json: &str) -> Result<(), failure::Error> {
+  pub fn write_json(&mut self, json: &str) -> Result<(), failure::Error> {
     let val: Value = serde_json::from_str(json)?;
     let bson = Bson::from(val);
     // should do a match for NoneError
     let doc = bson.as_document().unwrap().to_owned();
+    self.update_count();
+    self.generate_field(doc, None, None);
+    Ok(())
+  }
+
+  /// Writes json-like string slices SchemaParser's fields vector.
+  ///
+  /// # Arguments
+  /// * `bson` - a bson object. e.g. `bson!({ "name": "Chashu", "type": "Cat" })
+  ///
+  /// # Examples
+  /// ```
+  /// use mongodb_schema_parser::SchemaParser;
+  /// #[macro_use]
+  /// use bson;
+  ///
+  /// let mut schema_parser = SchemaParser::new();
+  /// let bson = bson!({ "name": "Chashu", "type": "Cat" });
+  /// schema_parser.write_json(&bson);
+  /// ```
+  #[inline]
+  pub fn write_bson(&mut self, val: &str) -> Result<(), failure::Error> {
+    let val: Value = serde_json::from_str(val)?;
+    let bson = Bson::from(val);
+    let doc = bson.as_document().unwrap().to_owned()
     self.update_count();
     self.generate_field(doc, None, None);
     Ok(())
@@ -139,7 +165,7 @@ impl SchemaParser {
   /// use mongodb_schema_parser::SchemaParser;
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
-  /// schema_parser.write(&json);
+  /// schema_parser.write_json(&json);
   /// let schema = schema_parser.read();
   /// println!("{:?}", schema);
   /// ```
@@ -156,7 +182,8 @@ impl SchemaParser {
   /// use mongodb_schema_parser::SchemaParser;
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
-  /// schema_parser.write(&json);
+  /// schema_parser.write_json(&json);
+  /// schema_parser.read();
   /// let schema = schema_parser.to_json().unwrap();
   /// println!("{}", schema);
   /// ```
@@ -261,8 +288,8 @@ impl SchemaParser {
     Self::new()
   }
 
-  /// Wrapper method for `schema_parser.write()` to be used in JavaScript.
-  /// `wasm_bindgen(js_name = "write")`
+  /// Wrapper method for `schema_parser.write_json()` to be used in JavaScript.
+  /// `wasm_bindgen(js_name = "writeJson")`
   ///
   ///
   /// ```js, ignore
@@ -270,11 +297,19 @@ impl SchemaParser {
   ///
   /// var schemaParser = new SchemaParser()
   /// var json = "{"name": "Nori", "type": "Cat"}"
-  /// schemaParser.write(json)
+  /// schemaParser.writeJson(json)
   /// ````
-  #[wasm_bindgen(js_name = "write")]
-  pub fn wasm_write(&mut self, json: &str) -> Result<(), JsValue> {
-    match self.write(json) {
+  #[wasm_bindgen(js_name = "writeJson")]
+  pub fn wasm_write_json(&mut self, json: &str) -> Result<(), JsValue> {
+    match self.write_json(json) {
+      Err(e) => Err(JsValue::from_str(&format!("{}", e))),
+      _ => Ok(()),
+    }
+  }
+
+  #[wasm_bindgen(js_name = "writeBson")]
+  pub fn wasm_write_bson(&mut self, bson: &str) -> Result<(), JsValue> {
+    match self.write_bson(bson) {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       _ => Ok(()),
     }
@@ -288,13 +323,14 @@ impl SchemaParser {
   ///
   /// var schemaParser = new SchemaParser()
   /// var json = "{"name": "Nori", "type": "Cat"}"
-  /// schemaParser.write(json)
+  /// schemaParser.writeJson(json)
   /// // get the result as a json string
   /// var result = schemaParser.toJson()
   /// console.log(result) //
   /// ````
   #[wasm_bindgen(js_name = "toJson")]
   pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
+    self.read();
     match self.to_json() {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       Ok(val) => Ok(val),
@@ -320,26 +356,43 @@ mod tests {
   }
 
   #[test]
-  fn it_writes() {
+  fn it_writes_json() {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
+    schema_parser.write_json(&json_str).unwrap();
     assert_eq!(schema_parser.count, 1);
     assert_eq!(schema_parser.fields.len(), 2);
   }
 
   #[bench]
-  fn bench_it_writes(bench: &mut Bencher) {
+  fn bench_it_writes_json(bench: &mut Bencher) {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    bench.iter(|| schema_parser.write(&json_str));
+    bench.iter(|| schema_parser.write_json(&json_str));
+  }
+
+  #[test]
+  fn it_writes_bson() {
+    let mut schema_parser = SchemaParser::new();
+    let bson_str = bson!({"name": "Nori", "type": "Cat"});
+    schema_parser.write_bson(&bson_str).unwrap();
+    println!("{:?}", schema_parser.read());
+    assert_eq!(schema_parser.count, 1);
+    assert_eq!(schema_parser.fields.len(), 2);
+  }
+
+  #[bench]
+  fn bench_it_creates_write_json(bench: &mut Bencher) {
+    let mut schema_parser = SchemaParser::new();
+    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+    bench.iter(|| schema_parser.write_json(&json_str));
   }
 
   #[test]
   fn it_reads() {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
+    schema_parser.write_json(&json_str).unwrap();
     let output = schema_parser.read();
     println!("{:?}", output);
     assert_eq!(output.count, 1);
@@ -352,9 +405,9 @@ mod tests {
     let json_str1 = r#"{"name": "Nori", "type": "Cat"}"#;
     let json_str2 = r#"{"name": "Rey"}"#;
     let json_str3 = r#"{"name": "Chashu"}"#;
-    schema_parser.write(&json_str1).unwrap();
-    schema_parser.write(&json_str2).unwrap();
-    schema_parser.write(&json_str3).unwrap();
+    schema_parser.write_json(&json_str1).unwrap();
+    schema_parser.write_json(&json_str2).unwrap();
+    schema_parser.write_json(&json_str3).unwrap();
     let mut output = schema_parser.read();
     let type_field = output.fields.get_mut("type");
     if let Some(type_field) = type_field {
@@ -373,8 +426,8 @@ mod tests {
     let mut schema_parser = SchemaParser::new();
     let json_str1 = r#"{"name": "Nori", "type": {"breed": "Norwegian Forest", "type": "cat"}}"#;
     let json_str2 = r#"{"name": "Rey", "type": {"breed": "Viszla"}}"#;
-    schema_parser.write(&json_str1).unwrap();
-    schema_parser.write(&json_str2).unwrap();
+    schema_parser.write_json(&json_str1).unwrap();
+    schema_parser.write_json(&json_str2).unwrap();
     let output = schema_parser.read();
     let type_field = output.fields.get("type");
     if let Some(type_field) = type_field {
@@ -406,7 +459,7 @@ mod tests {
     let mut schema_parser = SchemaParser::new();
     assert_eq!(schema_parser.count, 0);
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
+    schema_parser.write_json(&json_str).unwrap();
     assert_eq!(schema_parser.count, 1);
   }
 
@@ -414,7 +467,7 @@ mod tests {
   fn it_updates_fields() {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Chashu", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
+    schema_parser.write_json(&json_str).unwrap();
     let name = Bson::String("Nori".to_owned());
     schema_parser.update_field("name", &name);
     let vec = vec![
@@ -434,7 +487,7 @@ mod tests {
   fn bench_it_updates_fields(bench: &mut Bencher) {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    schema_parser.write(&json_str).unwrap();
+    schema_parser.write_json(&json_str).unwrap();
     let name = Bson::String("Chashu".to_owned());
 
     bench.iter(|| schema_parser.update_field("name", &name));
@@ -494,8 +547,8 @@ mod tests {
     let mut schema_parser = SchemaParser::new();
     let vec_json1 = r#"{"animals": ["cat", "dog"]}"#;
     let vec_json2 = r#"{"animals": ["wallaby", "bird"]}"#;
-    schema_parser.write(vec_json1).unwrap();
-    schema_parser.write(vec_json2).unwrap();
+    schema_parser.write_json(vec_json1).unwrap();
+    schema_parser.write_json(vec_json2).unwrap();
     assert_eq!(schema_parser.fields.len(), 1);
     let field = schema_parser.fields.get("animals");
     if let Some(field) = field {
@@ -512,8 +565,8 @@ mod tests {
     let mut schema_parser = SchemaParser::new();
     let number_json = r#"{"phone_number": 491234568789}"#;
     let string_json = r#"{"phone_number": "+441234456789"}"#;
-    schema_parser.write(number_json).unwrap();
-    schema_parser.write(string_json).unwrap();
+    schema_parser.write_json(number_json).unwrap();
+    schema_parser.write_json(string_json).unwrap();
     let field = schema_parser.fields.get("phone_number");
     if let Some(field) = field {
       assert_eq!(field.count, 2);
@@ -526,7 +579,7 @@ mod tests {
   fn it_creates_field_type_for_null() {
     let mut schema_parser = SchemaParser::new();
     let null_json = r#"{"phone_number": null}"#;
-    schema_parser.write(null_json).unwrap();
+    schema_parser.write_json(null_json).unwrap();
     let field = schema_parser.fields.get("phone_number");
     if let Some(field) = field {
       assert_eq!(field.bson_types[0], "Null");

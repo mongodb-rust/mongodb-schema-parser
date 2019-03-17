@@ -10,7 +10,7 @@ fn json_file_gen() -> Result<(), Error> {
   let mut schema_parser = SchemaParser::new();
   for json in vec {
     // this panics i think ?
-    schema_parser.write(&json)?;
+    schema_parser.write_json(&json)?;
   }
   let schema = schema_parser.to_json();
   println!("{:?}", schema);
