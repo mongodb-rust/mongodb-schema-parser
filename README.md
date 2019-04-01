@@ -7,8 +7,10 @@ to be used in Rust or as Web Assembly module in JavaScript.
 
 - [Documentation][8]
 - [Crates.io][2]
+- [Rust API]()
+- [JavaScript API]()
 
-## Usage: in Rust
+# Usage: in Rust
 ```rust
 use SchemaParser
 
@@ -23,8 +25,38 @@ pub fn main () {
   println!("{:?}", result);
 }
 ```
+## Rust API:
+### `schema_parser = SchemaParser::new() -> Self`
+Creates a new SchemaParser instance. 
 
-## Usage: in JavaScript 
+### `schema_parser.write_bson(doc: Document) -> Result((), failure::Error)`
+Start populating instantiated schema_parser with [Bson OrderedDocument](https://docs.rs/bson/0.13.0/bson/ordered/struct.OrderedDocument.html). This should be called for each document you add:
+```rust
+use bson::{doc, bson};
+let schema_parser = SchemaParser::new()
+schema_parser.write_bson(doc! {"name": "Nori", "type": "Norwegian Forest Cat"});
+schema_parser.write_bson(doc! {"name": "Rey", "type": "Viszla"});
+```
+
+### `schema_parser.write_json(json: &str) -> Result((), failure::Error)`
+Start populating instantiated schema_parser with a string slice. This should also be called individually for each document:
+
+```rust
+let schema_parser = SchemaParser::new()
+schema_parser.write_json(r#"{"name": "Chashu", "type": "Norwegian Forest Cat"}"#);
+schema_parser.write_bson(r#"{"name": "Rey", "type": "Viszla"}"#);
+```
+
+### `schema_parser.read() -> SchemaParser`
+Internally this finalizes the output schema with missing fields, duplicates
+and probability calculations. SchemaParser is ready to be used after this
+step.
+
+### `schema_parser.to_json() -> Result(String, failure::Error)`
+Returns a serde serialized version of the resulting struct. Before using `.to_json()`, a `.read()` should be called to finalize schema.
+
+
+# Usage: in JavaScript 
 Make sure your environment is setup for Web Assembly usage. 
 ```js
 import { SchemaParser } from "mongodb-schema-parser";
