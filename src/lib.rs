@@ -48,15 +48,15 @@
 #![cfg_attr(feature = "nightly", feature(external_doc))]
 #![cfg_attr(feature = "nightly", doc(include = "../README.md"))]
 #![cfg_attr(feature = "nightly", deny(unsafe_code))]
-#![allow(clippy::new_without_default_derive)]
-#![feature(test)]
+#![allow(unused_imports)]
+#![allow(clippy::new_without_default)]
+// #![feature(test)]
 
 extern crate failure;
-extern crate test;
+// extern crate test;
 
-#[macro_use]
 extern crate bson;
-use bson::{Bson, Document};
+use bson::{bson, decode_document, doc, Bson, Document};
 
 #[macro_use]
 extern crate serde_derive;
@@ -64,8 +64,10 @@ extern crate serde;
 extern crate serde_json;
 use serde_json::Value;
 
-use js_sys;
+use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
+// add to use console.log to send debugs to js land
+// use web_sys::console;
 
 // using custom allocator which is built specifically for wasm; makes it smaller
 // + faster
@@ -132,28 +134,25 @@ impl SchemaParser {
     Ok(())
   }
 
-  /// Writes json-like string slices SchemaParser's fields vector.
+  /// Writes Bson documents to SchemaParser's fields vector.
   ///
   /// # Arguments
-  /// * `bson` - a bson object. e.g. `bson!({ "name": "Chashu", "type": "Cat" })
+  /// * `doc` - A Bson Document.
   ///
   /// # Examples
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
-  /// #[macro_use]
-  /// use bson;
+  /// use bson::{doc, bson};
   ///
   /// let mut schema_parser = SchemaParser::new();
-  /// let bson = bson!({ "name": "Chashu", "type": "Cat" });
-  /// schema_parser.write_json(&bson);
+  /// let bson = doc! { "name": "Chashu", "type": "Cat" };
+  /// schema_parser.write_bson(bson);
   /// ```
   #[inline]
-  pub fn write_bson(&mut self, val: &str) -> Result<(), failure::Error> {
-    let val: Value = serde_json::from_str(val)?;
-    let bson = Bson::from(val);
-    let doc = bson.as_document().unwrap().to_owned()
+  pub fn write_bson(&mut self, doc: Document) -> Result<(), failure::Error> {
     self.update_count();
     self.generate_field(doc, None, None);
+
     Ok(())
   }
 
@@ -307,8 +306,15 @@ impl SchemaParser {
     }
   }
 
-  #[wasm_bindgen(js_name = "writeBson")]
-  pub fn wasm_write_bson(&mut self, bson: &str) -> Result<(), JsValue> {
+  #[wasm_bindgen(js_name = "writeRaw")]
+  pub fn wasm_write_raw(&mut self, uint8: Uint8Array) -> Result<(), JsValue> {
+    let mut decoded_vec = vec![0u8; uint8.length() as usize];
+    // fill up a new u8 vec with bytes we get from js; decode_document needs a
+    // byte stream that implements a reader and u8 slice does this.
+    uint8.copy_to(&mut decoded_vec);
+    let mut slice: &[u8] = &decoded_vec;
+    let bson = decode_document(&mut slice).unwrap().to_owned();
+
     match self.write_bson(bson) {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       _ => Ok(()),
@@ -340,7 +346,7 @@ impl SchemaParser {
 
 #[cfg(test)]
 mod tests {
-  use self::test::Bencher;
+  // use self::test::Bencher;
   use super::*;
 
   #[test]
@@ -350,10 +356,10 @@ mod tests {
     assert_eq!(schema_parser.fields.len(), 0);
   }
 
-  #[bench]
-  fn bench_it_creates_new(bench: &mut Bencher) {
-    bench.iter(|| SchemaParser::new);
-  }
+  // #[bench]
+  // fn bench_it_creates_new(bench: &mut Bencher) {
+  //   bench.iter(|| SchemaParser::new);
+  // }
 
   #[test]
   fn it_writes_json() {
@@ -364,29 +370,29 @@ mod tests {
     assert_eq!(schema_parser.fields.len(), 2);
   }
 
-  #[bench]
-  fn bench_it_writes_json(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
-    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    bench.iter(|| schema_parser.write_json(&json_str));
-  }
+  // #[bench]
+  // fn bench_it_writes_json(bench: &mut Bencher) {
+  //   let mut schema_parser = SchemaParser::new();
+  //   let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+  //   bench.iter(|| schema_parser.write_json(&json_str));
+  // }
 
-  #[test]
-  fn it_writes_bson() {
-    let mut schema_parser = SchemaParser::new();
-    let bson_str = bson!({"name": "Nori", "type": "Cat"});
-    schema_parser.write_bson(&bson_str).unwrap();
-    println!("{:?}", schema_parser.read());
-    assert_eq!(schema_parser.count, 1);
-    assert_eq!(schema_parser.fields.len(), 2);
-  }
+  // #[test]
+  // fn it_writes_bson() {
+  //   let mut schema_parser = SchemaParser::new();
+  //   // let bson_str = bson!({"name": "Nori", "type": "Cat"});
+  //   schema_parser.write_raw(&bson_str).unwrap();
+  //   println!("{:?}", schema_parser.read());
+  //   assert_eq!(schema_parser.count, 1);
+  //   assert_eq!(schema_parser.fields.len(), 2);
+  // }
 
-  #[bench]
-  fn bench_it_creates_write_json(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
-    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    bench.iter(|| schema_parser.write_json(&json_str));
-  }
+  // #[bench]
+  // fn bench_it_creates_write_json(bench: &mut Bencher) {
+  //   let mut schema_parser = SchemaParser::new();
+  //   let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+  //   bench.iter(|| schema_parser.write_json(&json_str));
+  // }
 
   #[test]
   fn it_reads() {
@@ -483,15 +489,15 @@ mod tests {
     }
   }
 
-  #[bench]
-  fn bench_it_updates_fields(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
-    let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
-    schema_parser.write_json(&json_str).unwrap();
-    let name = Bson::String("Chashu".to_owned());
+  // #[bench]
+  // fn bench_it_updates_fields(bench: &mut Bencher) {
+  //   let mut schema_parser = SchemaParser::new();
+  //   let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
+  //   schema_parser.write_json(&json_str).unwrap();
+  //   let name = Bson::String("Chashu".to_owned());
 
-    bench.iter(|| schema_parser.update_field("name", &name));
-  }
+  //   bench.iter(|| schema_parser.update_field("name", &name));
+  // }
 
   #[test]
   fn it_generates_fields() {
@@ -514,33 +520,33 @@ mod tests {
     }
   }
 
-  #[bench]
-  fn bench_it_generates_fields_no_path(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
+  // #[bench]
+  // fn bench_it_generates_fields_no_path(bench: &mut Bencher) {
+  //   let mut schema_parser = SchemaParser::new();
 
-    bench.iter(|| {
-      let doc = doc! {
-        "name": "Rey",
-        "type": "Dog"
-      };
-      let n = test::black_box(doc);
-      schema_parser.generate_field(n, None, None)
-    });
-  }
+  //   bench.iter(|| {
+  //     let doc = doc! {
+  //       "name": "Rey",
+  //       "type": "Dog"
+  //     };
+  //     let n = test::black_box(doc);
+  //     schema_parser.generate_field(n, None, None)
+  //   });
+  // }
 
-  #[bench]
-  fn bench_it_generates_fields_with_path(bench: &mut Bencher) {
-    let mut schema_parser = SchemaParser::new();
+  // #[bench]
+  // fn bench_it_generates_fields_with_path(bench: &mut Bencher) {
+  //   let mut schema_parser = SchemaParser::new();
 
-    bench.iter(|| {
-      let doc = doc! {
-        "name": "Rey",
-        "type": "Dog"
-      };
-      let n = test::black_box(doc);
-      schema_parser.generate_field(n, Some("treats".to_owned()), None)
-    });
-  }
+  //   bench.iter(|| {
+  //     let doc = doc! {
+  //       "name": "Rey",
+  //       "type": "Dog"
+  //     };
+  //     let n = test::black_box(doc);
+  //     schema_parser.generate_field(n, Some("treats".to_owned()), None)
+  //   });
+  // }
 
   #[test]
   fn it_combines_arrays_for_same_field_into_same_types_vector() {

@@ -178,7 +178,7 @@ impl FieldType {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test::Bencher;
+  // use crate::test::Bencher;
 
   #[test]
   fn it_creates_new() {
@@ -188,12 +188,12 @@ mod tests {
     assert_eq!(field_type.path, address);
   }
 
-  #[bench]
-  fn bench_it_creates_new(bench: &mut Bencher) {
-    bench.iter(|| {
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()))
-    });
-  }
+  // #[bench]
+  // fn bench_it_creates_new(bench: &mut Bencher) {
+  //   bench.iter(|| {
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()))
+  //   });
+  // }
 
   #[test]
   fn it_adds_to_type() {}
@@ -240,11 +240,11 @@ mod tests {
     assert_eq!(value, None);
   }
 
-  #[bench]
-  fn bench_it_gets_value(bench: &mut Bencher) {
-    let bson_value = Bson::String("cats".to_string());
-    bench.iter(|| FieldType::get_value(&bson_value));
-  }
+  // #[bench]
+  // fn bench_it_gets_value(bench: &mut Bencher) {
+  //   let bson_value = Bson::String("cats".to_string());
+  //   bench.iter(|| FieldType::get_value(&bson_value));
+  // }
 
   #[test]
   fn it_gets_type() {}
@@ -270,16 +270,16 @@ mod tests {
     assert_eq!(unique, 2);
   }
 
-  #[bench]
-  fn bench_it_gets_unique(bench: &mut Bencher) {
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    field_type.values.push(ValueType::Str("Berlin".to_string()));
-    field_type
-      .values
-      .push(ValueType::Str("Hamburg".to_string()));
-    bench.iter(|| field_type.get_unique());
-  }
+  // #[bench]
+  // fn bench_it_gets_unique(bench: &mut Bencher) {
+  //   let mut field_type =
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+  //   field_type.values.push(ValueType::Str("Berlin".to_string()));
+  //   field_type
+  //     .values
+  //     .push(ValueType::Str("Hamburg".to_string()));
+  //   bench.iter(|| field_type.get_unique());
+  // }
 
   #[test]
   fn it_sets_unique() {
@@ -293,16 +293,16 @@ mod tests {
     assert_eq!(field_type.unique, Some(2));
   }
 
-  #[bench]
-  fn bench_it_sets_unique(bench: &mut Bencher) {
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    field_type.values.push(ValueType::Str("Berlin".to_string()));
-    field_type
-      .values
-      .push(ValueType::Str("Hamburg".to_string()));
-    bench.iter(|| field_type.set_unique());
-  }
+  // #[bench]
+  // fn bench_it_sets_unique(bench: &mut Bencher) {
+  //   let mut field_type =
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+  //   field_type.values.push(ValueType::Str("Berlin".to_string()));
+  //   field_type
+  //     .values
+  //     .push(ValueType::Str("Hamburg".to_string()));
+  //   bench.iter(|| field_type.set_unique());
+  // }
 
   #[test]
   fn it_gets_duplicates_when_none() {
@@ -326,16 +326,16 @@ mod tests {
     assert_eq!(has_duplicates, true)
   }
 
-  #[bench]
-  fn bench_it_gets_duplicates(bench: &mut Bencher) {
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    field_type.values.push(ValueType::Str("Berlin".to_string()));
-    field_type
-      .values
-      .push(ValueType::Str("Hamburg".to_string()));
-    bench.iter(|| field_type.get_duplicates());
-  }
+  // #[bench]
+  // fn bench_it_gets_duplicates(bench: &mut Bencher) {
+  //   let mut field_type =
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+  //   field_type.values.push(ValueType::Str("Berlin".to_string()));
+  //   field_type
+  //     .values
+  //     .push(ValueType::Str("Hamburg".to_string()));
+  //   bench.iter(|| field_type.get_duplicates());
+  // }
 
   #[test]
   fn it_sets_duplicates() {
@@ -347,12 +347,12 @@ mod tests {
     assert_eq!(field_type.has_duplicates, true)
   }
 
-  #[bench]
-  fn bench_it_sets_duplicates(bench: &mut Bencher) {
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    bench.iter(|| field_type.set_duplicates());
-  }
+  // #[bench]
+  // fn bench_it_sets_duplicates(bench: &mut Bencher) {
+  //   let mut field_type =
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+  //   bench.iter(|| field_type.set_duplicates());
+  // }
 
   #[test]
   fn it_updates_count() {
@@ -362,12 +362,12 @@ mod tests {
     assert_eq!(field_type.count, 2);
   }
 
-  #[bench]
-  fn bench_it_updates_count(bench: &mut Bencher) {
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    bench.iter(|| field_type.update_count());
-  }
+  // #[bench]
+  // fn bench_it_updates_count(bench: &mut Bencher) {
+  //   let mut field_type =
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+  //   bench.iter(|| field_type.update_count());
+  // }
 
   #[test]
   fn it_updates_value_some() {
@@ -378,13 +378,13 @@ mod tests {
     assert_eq!(field_type.values[0], ValueType::I32(1234));
   }
 
-  #[bench]
-  fn bench_it_updates_value_some(bench: &mut Bencher) {
-    let bson_value = Bson::I32(1234);
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    bench.iter(|| field_type.update_value(&bson_value));
-  }
+  // #[bench]
+  // fn bench_it_updates_value_some(bench: &mut Bencher) {
+  //   let bson_value = Bson::I32(1234);
+  //   let mut field_type =
+  //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+  //   bench.iter(|| field_type.update_value(&bson_value));
+  // }
 
   #[test]
   fn it_updates_value_none() {

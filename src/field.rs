@@ -85,7 +85,7 @@ impl Field {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test::Bencher;
+  // use crate::test::Bencher;
 
   #[test]
   fn it_creates_new() {
@@ -99,12 +99,12 @@ mod tests {
     assert_eq!(field.count, count);
   }
 
-  #[bench]
-  fn bench_it_creates_new(bench: &mut Bencher) {
-    let path = "Nori.cat";
+  // #[bench]
+  // fn bench_it_creates_new(bench: &mut Bencher) {
+  //   let path = "Nori.cat";
 
-    bench.iter(|| Field::new("Nori".to_string(), &path));
-  }
+  //   bench.iter(|| Field::new("Nori".to_string(), &path));
+  // }
 
   #[test]
   fn it_gets_path_if_none() {
@@ -121,15 +121,15 @@ mod tests {
     assert_eq!(path, String::from("address.postal_code"));
   }
 
-  #[bench]
-  fn bench_it_gets_path(bench: &mut Bencher) {
-    bench.iter(|| {
-      Field::get_path(
-        String::from("postal_code"),
-        Some(String::from("address")),
-      )
-    });
-  }
+  // #[bench]
+  // fn bench_it_gets_path(bench: &mut Bencher) {
+  //   bench.iter(|| {
+  //     Field::get_path(
+  //       String::from("postal_code"),
+  //       Some(String::from("address")),
+  //     )
+  //   });
+  // }
 
   #[test]
   fn it_updates_count() {
@@ -138,11 +138,11 @@ mod tests {
     assert_eq!(field.count, 2);
   }
 
-  #[bench]
-  fn bench_it_updates_count(bench: &mut Bencher) {
-    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
-    bench.iter(|| field.update_count());
-  }
+  // #[bench]
+  // fn bench_it_updates_count(bench: &mut Bencher) {
+  //   let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
+  //   bench.iter(|| field.update_count());
+  // }
 
   #[allow(clippy::float_cmp)]
   #[test]
