@@ -140,13 +140,14 @@ impl SchemaParser {
   /// * `doc` - A Bson Document.
   ///
   /// # Examples
-  /// ```
+  /// ```ignore
   /// use mongodb_schema_parser::SchemaParser;
+  /// use js_sys::Uint8Array;
   /// use bson::{doc, bson};
   ///
   /// let mut schema_parser = SchemaParser::new();
-  /// let bson = doc! { "name": "Chashu", "type": "Cat" };
-  /// schema_parser.write_raw(bson);
+  /// let uint8 = Uint8Array::new(&JsValue::from_str(r#"{ "name": "Chashu", "type": "Cat" }"#));
+  /// schema_parser.write_raw(uint8);
   /// ```
   #[inline]
   pub fn write_raw(&mut self, uint8: Uint8Array) -> Result<(), failure::Error> {
