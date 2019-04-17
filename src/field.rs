@@ -77,6 +77,7 @@ impl Field {
     self.count += num
   }
 
+  #[inline]
   fn set_probability(&mut self, parent_count: usize) {
     self.probability = self.count as f32 / parent_count as f32
   }
