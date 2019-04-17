@@ -21,7 +21,7 @@ pub fn main () {
   for json in file {
     schema_parser.write(&json)?;
   }
-  let result = schema_parser.read();
+  let result = schema_parser.flush();
   println!("{:?}", result);
 }
 ```
@@ -47,38 +47,45 @@ schema_parser.write_json(r#"{"name": "Chashu", "type": "Norwegian Forest Cat"}"#
 schema_parser.write_bson(r#"{"name": "Rey", "type": "Viszla"}"#);
 ```
 
-### `schema_parser.read() -> SchemaParser`
+### `schema_parser.flush() -> SchemaParser`
 Internally this finalizes the output schema with missing fields, duplicates
 and probability calculations. SchemaParser is ready to be used after this
 step.
 
 ### `schema_parser.to_json() -> Result(String, failure::Error)`
-Returns a serde serialized version of the resulting struct. Before using `.to_json()`, a `.read()` should be called to finalize schema.
+Returns a serde serialized version of the resulting struct. Before using
+`.to_json()`, a `.flush()` should be called to finalize schema.
 
 
 # Usage: in JavaScript 
-Make sure your environment is setup for Web Assembly usage. 
+Make sure your environment is setup for WebAssembly usage. Check out
+[CONTRIBUTING.md]() for more detailed instructions.
+
 ```js
-import { SchemaParser } from "mongodb-schema-parser";
+var schemaWasm = import('@mongodb-rust/wasm-schema-parser')
 
-const schemaParser = new SchemaParser()
-
-// get the json file
-fetch('./fanclub.json')
-  .then(response => response.text())
-  .then(data => {
-    var json = data.split("\n")
-    for (var i = 0; i < json.length; i++) {
-      if (json[i] !== '') {
-        // feed the parser json line by line
-        schemaParser.write(json[i])
-      }
-    }
-    // get the result as a json string
-    var result = schemaParser.toJson()
-    console.log(result)
-  })
+schemaWasm.then(module => {
+  var schemaParser = new module.SchemaParser()
+  schemaParser.writeJson('{"name": "Chashu", "type": "Norwegian Forest Cat"}')
+  var result = schemaParser.toJson()
+  console.log(result)
+})
+.catch(e => console.error('Cannot load @mongodb-rust/wasm-schema-parser', e))
 ```
+
+## JavaScript API:
+
+### `schemaParser = new SchemaParser()`
+Creates a new SchemaParser instance.
+
+### `schemaParser.writeRaw(bsonBuf)`
+Writes a document in raw `BSON` buffer form to Schema Parser. This buffer can be obtained from MongoDB by passing the `raw` flag to node driver. 
+
+### `schemaParser.writeJson(json)`
+Writes a document in a form of `json` string to SchemaParser.
+
+### `schema = schemaParser.toJson()`
+Returns parsed schema in `json` form.
 
 ## Installation
 ```sh
@@ -90,8 +97,8 @@ $ cargo add mongodb-schema-parser
 
 [1]: https://img.shields.io/crates/v/mongodb-schema-parser.svg?style=flat-square
 [2]: https://crates.io/crates/mongodb-schema-parser
-[3]: https://img.shields.io/travis/lrlna/mongodb-schema-parser.svg?style=flat-square
-[4]: https://travis-ci.org/lrlna/mongodb-schema-parser
+[3]: https://img.shields.io/travis/mongodb-rust/mongodb-schema-parser.svg?style=flat-square
+[4]: https://travis-ci.org/mongodb-rust/mongodb-schema-parser
 [5]: https://img.shields.io/crates/d/mongodb-schema-parser.svg?style=flat-square
 [6]: https://crates.io/crates/mongodb-schema-parser
 [7]: https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square

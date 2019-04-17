@@ -16,7 +16,7 @@
 //!   for json in file {
 //!     schema_parser.write_json(&json).unwrap();
 //!   }
-//!   let result = schema_parser.read();
+//!   let result = schema_parser.flush();
 //! }
 //! ```
 //!
@@ -146,10 +146,17 @@ impl SchemaParser {
   ///
   /// let mut schema_parser = SchemaParser::new();
   /// let bson = doc! { "name": "Chashu", "type": "Cat" };
-  /// schema_parser.write_bson(bson);
+  /// schema_parser.write_raw(bson);
   /// ```
   #[inline]
-  pub fn write_bson(&mut self, doc: Document) -> Result<(), failure::Error> {
+  pub fn write_raw(&mut self, uint8: Uint8Array) -> Result<(), failure::Error> {
+    let mut decoded_vec = vec![0u8; uint8.length() as usize];
+    // fill up a new u8 vec with bytes we get from js; decode_document needs a
+    // byte stream that implements a reader and u8 slice does this.
+    uint8.copy_to(&mut decoded_vec);
+    let mut slice: &[u8] = &decoded_vec;
+    let doc = decode_document(&mut slice).unwrap().to_owned();
+    // write bson internally
     self.update_count();
     self.generate_field(doc, None, None);
 
@@ -165,10 +172,10 @@ impl SchemaParser {
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write_json(&json);
-  /// let schema = schema_parser.read();
+  /// let schema = schema_parser.flush();
   /// println!("{:?}", schema);
   /// ```
-  pub fn read(&mut self) -> SchemaParser {
+  pub fn flush(&mut self) -> SchemaParser {
     self.finalise_schema();
     self.to_owned()
   }
@@ -182,7 +189,7 @@ impl SchemaParser {
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write_json(&json);
-  /// schema_parser.read();
+  /// schema_parser.flush();
   /// let schema = schema_parser.to_json().unwrap();
   /// println!("{}", schema);
   /// ```
@@ -202,8 +209,8 @@ impl SchemaParser {
       self.update_count();
     }
     for (key, value) in doc {
-      let current_path = Field::get_path(key.to_string(), path.to_owned());
-      self.update_or_create_field(key.to_string(), &value, &current_path)
+      let current_path = Field::get_path(key.to_owned(), path.to_owned());
+      self.update_or_create_field(key.to_owned(), &value, &current_path)
     }
   }
 
@@ -308,14 +315,7 @@ impl SchemaParser {
 
   #[wasm_bindgen(js_name = "writeRaw")]
   pub fn wasm_write_raw(&mut self, uint8: Uint8Array) -> Result<(), JsValue> {
-    let mut decoded_vec = vec![0u8; uint8.length() as usize];
-    // fill up a new u8 vec with bytes we get from js; decode_document needs a
-    // byte stream that implements a reader and u8 slice does this.
-    uint8.copy_to(&mut decoded_vec);
-    let mut slice: &[u8] = &decoded_vec;
-    let bson = decode_document(&mut slice).unwrap().to_owned();
-
-    match self.write_bson(bson) {
+    match self.write_raw(uint8) {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       _ => Ok(()),
     }
@@ -336,7 +336,7 @@ impl SchemaParser {
   /// ````
   #[wasm_bindgen(js_name = "toJson")]
   pub fn wasm_to_json(&mut self) -> Result<String, JsValue> {
-    self.read();
+    self.flush();
     match self.to_json() {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       Ok(val) => Ok(val),
@@ -382,7 +382,7 @@ mod tests {
   //   let mut schema_parser = SchemaParser::new();
   //   // let bson_str = bson!({"name": "Nori", "type": "Cat"});
   //   schema_parser.write_raw(&bson_str).unwrap();
-  //   println!("{:?}", schema_parser.read());
+  //   println!("{:?}", schema_parser.flush());
   //   assert_eq!(schema_parser.count, 1);
   //   assert_eq!(schema_parser.fields.len(), 2);
   // }
@@ -395,11 +395,11 @@ mod tests {
   // }
 
   #[test]
-  fn it_reads() {
+  fn it_flushes() {
     let mut schema_parser = SchemaParser::new();
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
     schema_parser.write_json(&json_str).unwrap();
-    let output = schema_parser.read();
+    let output = schema_parser.flush();
     println!("{:?}", output);
     assert_eq!(output.count, 1);
     assert_eq!(output.fields.len(), 2);
@@ -414,7 +414,7 @@ mod tests {
     schema_parser.write_json(&json_str1).unwrap();
     schema_parser.write_json(&json_str2).unwrap();
     schema_parser.write_json(&json_str3).unwrap();
-    let mut output = schema_parser.read();
+    let mut output = schema_parser.flush();
     let type_field = output.fields.get_mut("type");
     if let Some(type_field) = type_field {
       assert_eq!(type_field.count, 3);
@@ -434,7 +434,7 @@ mod tests {
     let json_str2 = r#"{"name": "Rey", "type": {"breed": "Viszla"}}"#;
     schema_parser.write_json(&json_str1).unwrap();
     schema_parser.write_json(&json_str2).unwrap();
-    let output = schema_parser.read();
+    let output = schema_parser.flush();
     let type_field = output.fields.get("type");
     if let Some(type_field) = type_field {
       let doc = type_field.types.get("Document");
