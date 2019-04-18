@@ -7,8 +7,9 @@ to be used in Rust or as Web Assembly module in JavaScript.
 
 - [Documentation][8]
 - [Crates.io][2]
-- [Rust API]()
-- [JavaScript API]()
+- [Rust API](https://github.com/mongodb-rust/mongodb-schema-parser#rust-api)
+- [JavaScript API](https://github.com/mongodb-rust/mongodb-schema-parser#javascript-api)
+- [npm package][9]
 
 # Usage: in Rust
 ```rust
@@ -59,7 +60,7 @@ Returns a serde serialized version of the resulting struct. Before using
 
 # Usage: in JavaScript 
 Make sure your environment is setup for WebAssembly usage. Check out
-[CONTRIBUTING.md]() for more detailed instructions.
+[CONTRIBUTING.md](./CONTRIBUTING.md) for more detailed instructions.
 
 ```js
 var schemaWasm = import('@mongodb-rust/wasm-schema-parser')
@@ -103,3 +104,4 @@ $ cargo add mongodb-schema-parser
 [6]: https://crates.io/crates/mongodb-schema-parser
 [7]: https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square
 [8]: https://docs.rs/mongodb-schema-parser
+[9]: https://npmjs.com/@mongodb-rust/wasm-schema-parser
