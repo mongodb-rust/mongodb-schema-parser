@@ -13,6 +13,7 @@ Repository.
   * [Latest Rust](#latest-rust)
   * [Formatting](#formatting)
   * [WASM Build](#wasm-build)
+  * [WASM in JS](#wasm-in-js)
 
 - [Code of Conduct](#code-of-conduct)
 
@@ -93,6 +94,45 @@ cargo check --target wasm32-unknown-unknown
 ```
 
 Travis CI will also run a wasm-pack build to check we are able to compile this correctly.
+
+### WASM in JS
+The easiest way to run WASM in the browser is via
+[webpack](https://webpack.js.org/). If you are running this in electron, it's
+recommended to be on webpack > `4.29.6`. There have been a few bugs that were
+fixed in that version, and we find it to be quite stable. If you're in the
+browser-browser and not in electron, anything webpack > 4.x.
+
+You will need to add `.wasm` to your [resolve extensions](https://webpack.js.org/configuration/resolve/#resolve-extensions):
+```js
+extensions: ['.js', '.jsx', '.json', 'less', '.wasm']
+```
+
+WASM _needs_ to be loaded async and dynamically. The easiest way to do this
+is to have a [babel
+plugin](https://www.npmjs.com/package/babel-plugin-syntax-dynamic-import):
+```js
+// in .babelrc
+{
+  "plugins": [
+    "syntax-dynamic-import"
+  ]
+}
+```
+
+After, you can just import your plugin, wrap its loading in a promise and use the API as intended:
+```js
+// note the import rather than require!
+var wasm = import('wasm')
+function runWasmAction (param) {
+  // .then on the previously imported module
+  wasm
+    .then(module => {
+      // use your module's API
+      new module.ConstructorMethod()
+    })
+    .catch(e => return new Error(`Error in wasm module ${e}`))
+}
+```
 
 ## Code of Conduct
 The project has a [Code of Conduct](./CODE_OF_CONDUCT.md) that *all*
