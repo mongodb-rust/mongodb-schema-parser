@@ -12,8 +12,7 @@ Repository.
 - [Environment Setup](#environment-setup)
   * [Latest Rust](#latest-rust)
   * [Formatting](#formatting)
-  * [Wasm Build](#wasm-build)
-  * [Coding Style](#coding-style)
+  * [WASM Build](#wasm-build)
 
 - [Code of Conduct](#code-of-conduct)
 
@@ -23,14 +22,17 @@ Repository.
 ### Latest Rust
 This project uses a few things that you should set yourself up with before
 starting work. First of all, make sure you have the latest `rust` and `cargo`
-installed. The best way to do that is with `rustup`, and you can read about it
-more in the [rust
-book](https://doc.rust-lang.org/book/second-edition/ch01-01-installation.html).
-But to get yourself uptodate with all the things:
+installed. The best way to do that is with `rustup`, and you can read about
+it more in the [rust
+book](https://doc.rust-lang.org/book/ch01-01-installation.html). Similarly
+working with cargo is better described in [the
+book](https://doc.rust-lang.org/book/ch01-03-hello-cargo.html)
 
+To get yourself uptodate with all the things:
 ```bash
 rustup update
 ```
+
 ### Formatting
 We are using two tools to help with best-practice fromatting:
 [rustfmt](https://github.com/rust-lang-nursery/rustfmt) and
@@ -54,42 +56,43 @@ augroup filetype_rust
 augroup END
 ```
 `rust-nursery` also has support for other editors, like
-[vscode](https://github.com/rust-lang-nursery/rls-vscode).
+[vscode](https://github.com/rust-lang-nursery/rls-vscode). You can just add
+this plugin to your VSCode setup, and magic :sparkles:, everything works!
 
-`rustfmt` will also run as a pre-commit hook. You will need to copy the file
-that's currently in `./hooks/pre-commit` to your local `.git` directory:
-```bash
-cp hooks/pre-commit ./git/hooks/pre-commit
-```
-
-### Wasm Build
+### WASM Build
 To be able to use this module in JavaScript and Node, we compile it to WASM. For
 that we use [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) inside our
 `lib.rs`, and [wasm-pack](https://github.com/rustwasm/wasm-pack) to make a
 package to be published to `npm`. To do so, install `wasm-pack`:
 ```bash
-cargo install wasm-pack
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
+
 and run build that will generate a `pkg` directory that can be then published to
 npm:
+
 ```bash
-wasm-pack build
+wasm-pack build --no-typescript --release --scope=mongodb-rust
 ```
+
+If you are developing locally, you can also point your javascript imports to
+the build. For example:
+```js
+var schemaWasm = import('../../mongodb-schema-parser/pkg')
+```
+
+To publish you can also use `wasm-pack`:
+```bash
+wasm-pack publish --access=public
+``` 
+
+As you are developing sometimes it's useful to know whether you can compile
+to WASM. Especially when you add a new crate to the setup:
+```bash
+cargo check --target wasm32-unknown-unknown
+```
+
 Travis CI will also run a wasm-pack build to check we are able to compile this correctly.
-
-### Coding Style
-
-A few things to follow when working on this project. 
-
-1. Avoid using `unsafe-rust`. `lib.rs` is already setup with
-   `#[deny(unsafe-rust)]` to help with that.
-
-2. Structs should implement `Copy` and `Debug` traits to avoid future
-   complications. These can be simple appended with:
-``` rust
-#[derive(Debug, Copy)]
-struct Pair(Box<i32>, Box<i32>)
-```
 
 ## Code of Conduct
 The project has a [Code of Conduct](./CODE_OF_CONDUCT.md) that *all*
