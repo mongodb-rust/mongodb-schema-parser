@@ -67,7 +67,7 @@ use serde_json::Value;
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 // add to use console.log to send debugs to js land
-// use web_sys::console;
+use web_sys::console;
 
 // using custom allocator which is built specifically for wasm; makes it smaller
 // + faster
@@ -156,7 +156,8 @@ impl SchemaParser {
     // byte stream that implements a reader and u8 slice does this.
     uint8.copy_to(&mut decoded_vec);
     let mut slice: &[u8] = &decoded_vec;
-    let doc = decode_document(&mut slice).unwrap().to_owned();
+    let doc = decode_document(&mut slice)?.to_owned();
+    console::log_1(&"can decode document".into());
     // write bson internally
     self.update_count();
     self.generate_field(doc, None, None);
