@@ -1,6 +1,8 @@
 use super::SchemaParser;
+use failure::format_err;
 use js_sys::{Object, Uint8Array};
 use wasm_bindgen::prelude::*;
+
 // Need to wrap schema parser impl for wasm suppport.
 // Here we are wrapping the exported to JS land methods and mathing on Result to
 // turn the error message to JsValue.
@@ -88,6 +90,16 @@ impl SchemaParser {
     match self.to_js_object() {
       Err(e) => Err(JsValue::from_str(&format!("{}", e))),
       Ok(val) => Ok(val),
+    }
+  }
+
+  fn to_js_object(&self) -> Result<Object, failure::Error> {
+    let js_val = JsValue::from_serde(&serde_json::to_value(&self)?)?;
+    let js_obj = Object::try_from(&js_val);
+    if let Some(js_obj) = js_obj {
+      Ok(js_obj.clone())
+    } else {
+      Err(format_err!("Cannot create JavaScript Object from Schema."))
     }
   }
 }
