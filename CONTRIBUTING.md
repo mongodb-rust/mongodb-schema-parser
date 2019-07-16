@@ -82,7 +82,16 @@ the build. For example:
 var schemaWasm = import('../../mongodb-schema-parser/pkg')
 ```
 
-To publish you can also use `wasm-pack`:
+To publish you can also use `wasm-pack`. Before running the publish
+command, though, please make sure to change the name of the package in
+`pkg/package.json`. Otherwise we will end up with multiple copies of
+the same work. It should read:
+```
+{
+  "name": "@mongodb-rust/wasm-schema-parser",
+  ...
+```
+You can then safely publish with: 
 ```bash
 wasm-pack publish --access=public
 ``` 
