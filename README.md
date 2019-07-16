@@ -67,8 +67,12 @@ var schemaWasm = import('@mongodb-rust/wasm-schema-parser')
 
 schemaWasm.then(module => {
   var schemaParser = new module.SchemaParser()
-  schemaParser.writeJson('{"name": "Chashu", "type": "Norwegian Forest Cat"}')
-  var result = schemaParser.toJson()
+  try {
+    schemaParser.writeJson('{"name": "Chashu", "type": "Norwegian Forest Cat"}')
+  } catch (e) {
+    throw new Error("schema-parser: Could not write Json", e)
+  }
+  var result = schemaParser.toObject()
   console.log(result)
 })
 .catch(e => console.error('Cannot load @mongodb-rust/wasm-schema-parser', e))
@@ -87,6 +91,10 @@ Writes a document in a form of `json` string to SchemaParser.
 
 ### `schema = schemaParser.toJson()`
 Returns parsed schema in `json` form.
+
+### `schema = schemaParser.toObject()`
+Returns parsed schema as a JavaScript Object. Eliminates the need to call
+`JSON.parse()` on a JSON string.
 
 ## Installation
 ```sh

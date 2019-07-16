@@ -175,6 +175,7 @@ impl SchemaParser {
   /// # Examples
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
+  ///
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write_json(&json);
@@ -192,6 +193,7 @@ impl SchemaParser {
   /// # Examples
   /// ```
   /// use mongodb_schema_parser::SchemaParser;
+  ///
   /// let mut schema_parser = SchemaParser::new();
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write_json(&json);
@@ -202,16 +204,6 @@ impl SchemaParser {
   #[inline]
   pub fn to_json(&self) -> Result<String, failure::Error> {
     Ok(serde_json::to_string(&self)?)
-  }
-
-  pub fn to_js_object(&self) -> Result<Object, failure::Error> {
-    let js_val = JsValue::from_serde(&serde_json::to_value(&self)?)?;
-    let js_obj = Object::try_from(&js_val);
-    if let Some(js_obj) = js_obj {
-      Ok(js_obj.clone())
-    } else {
-      Err(format_err!("Cannot create JavaScript Object from Schema."))
-    }
   }
 
   #[inline]
