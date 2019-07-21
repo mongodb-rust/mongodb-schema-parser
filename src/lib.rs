@@ -202,7 +202,7 @@ impl SchemaParser {
   /// let json = r#"{ "name": "Chashu", "type": "Cat" }"#;
   /// schema_parser.write_json(&json);
   /// schema_parser.flush();
-  /// let schema = schema_parser.to_json().unwrap();
+  /// let schema = schema_parser.into_json().unwrap();
   /// println!("{}", schema);
   /// ```
   #[inline]
