@@ -239,13 +239,6 @@ mod tests {
     assert_eq!(value, Some(ValueType::Str("cats".to_string())));
   }
 
-  #[test]
-  fn it_gets_value_none() {
-    let bson_value = Bson::TimeStamp(1234);
-    let value = FieldType::get_value(&bson_value);
-    assert_eq!(value, None);
-  }
-
   // #[bench]
   // fn bench_it_gets_value(bench: &mut Bencher) {
   //   let bson_value = Bson::String("cats".to_string());
@@ -391,13 +384,4 @@ mod tests {
   //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
   //   bench.iter(|| field_type.update_value(&bson_value));
   // }
-
-  #[test]
-  fn it_updates_value_none() {
-    let bson_value = Bson::TimeStamp(1234);
-    let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
-    field_type.update_value(&bson_value);
-    assert!(field_type.values.is_empty());
-  }
 }
