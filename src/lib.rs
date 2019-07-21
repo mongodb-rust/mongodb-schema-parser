@@ -206,12 +206,9 @@ impl SchemaParser {
   /// println!("{}", schema);
   /// ```
   #[inline]
-  pub fn to_json(&self) -> Result<String, failure::Error> {
-    console::log_2(
-      &"converting to Json".into(),
-      &JsValue::from_str(&serde_json::to_string(&self).unwrap()),
-    );
-    Ok(serde_json::to_string(&self)?)
+  pub fn into_json(mut self) -> Result<String, failure::Error> {
+    let schema = self.flush();
+    Ok(serde_json::to_string(&schema)?)
   }
 
   #[inline]

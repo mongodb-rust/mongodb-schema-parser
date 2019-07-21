@@ -2,6 +2,7 @@ coverage/
 target/
 tmp/
 dist/
+*.code-workspace
 pkg/
 wasm-pack.log
 npm-debug.log*
