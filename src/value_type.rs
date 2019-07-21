@@ -4,6 +4,9 @@ pub enum ValueType {
   Str(String),
   I32(i32),
   I64(i64),
+  Decimal128(String),
   FloatingPoint(f64),
+  Binary(Vec<u8>),
   Boolean(bool),
+  Null(String),
 }

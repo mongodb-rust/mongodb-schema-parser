@@ -12,7 +12,7 @@ fn json_file_gen() -> Result<(), Error> {
     // this panics i think ?
     schema_parser.write_json(&json)?;
   }
-  let schema = schema_parser.to_json();
+  let schema = schema_parser.into_json();
   println!("{:?}", schema);
   Ok(())
 }

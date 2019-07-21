@@ -1,3 +1,4 @@
+#![allow(clippy::option_map_unit_fn)]
 use super::{Bson, SchemaParser, ValueType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -38,10 +39,7 @@ impl FieldType {
     match value {
       Bson::Array(arr) => {
         for val in arr.iter() {
-          let value_type = Self::get_value(val);
-          if let Some(value_type) = value_type {
-            self.values.push(value_type);
-          }
+          Self::get_value(val).map(|v| self.values.push(v));
         }
         self
       }
@@ -56,10 +54,7 @@ impl FieldType {
         self
       }
       _ => {
-        let value_type = Self::get_value(&bson_value);
-        if let Some(value_type) = value_type {
-          self.values.push(value_type);
-        }
+        Self::get_value(&bson_value).map(|v| self.values.push(v));
         self
       }
     }
@@ -89,12 +84,21 @@ impl FieldType {
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
     match value {
+      Bson::RegExp(val, _)
+      | Bson::JavaScriptCode(val)
+      | Bson::JavaScriptCodeWithScope(val, _)
+      | Bson::Symbol(val) => Some(ValueType::Str(val.to_string())),
+      Bson::I64(num) | Bson::TimeStamp(num) => Some(ValueType::I64(*num)),
       Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
-      Bson::String(string) => Some(ValueType::Str(string.to_string())),
+      Bson::UtcDatetime(date) => Some(ValueType::Str(date.clone().to_string())),
+      Bson::Decimal128(d128) => Some(ValueType::Decimal128(d128.to_string())),
       Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
+      Bson::String(string) => Some(ValueType::Str(string.to_string())),
+      Bson::Binary(_, vec) => Some(ValueType::Binary(vec.clone())),
       Bson::ObjectId(id) => Some(ValueType::Str(id.to_string())),
       Bson::I32(num) => Some(ValueType::I32(*num)),
-      Bson::I64(num) => Some(ValueType::I64(*num)),
+      Bson::Null => Some(ValueType::Null("Null".to_string())),
+      // Array and Document get handeled separately
       _ => None,
     }
   }
@@ -107,16 +111,25 @@ impl FieldType {
 
   pub fn get_type(value: &Bson) -> String {
     match value {
-      Bson::FloatingPoint(_) | Bson::I32(_) | Bson::I64(_) => {
-        "Number".to_string()
+      Bson::JavaScriptCodeWithScope(_, _) => {
+        "JavaScriptCodeWithScope".to_string()
       }
+      Bson::JavaScriptCode(_) => "JavaScriptCode".to_string(),
+      Bson::FloatingPoint(_) => "Double".to_string(),
+      Bson::UtcDatetime(_) => "UtcDatetime".to_string(),
+      Bson::Decimal128(_) => "Decimal128".to_string(),
+      Bson::TimeStamp(_) => "Timestamp".to_string(),
+      Bson::Binary(_, _) => "BinData".to_string(),
+      Bson::RegExp(_, _) => "Regex".to_string(),
       Bson::Document(_) => "Document".to_string(),
       Bson::ObjectId(_) => "ObjectId".to_string(),
       Bson::Boolean(_) => "Boolean".to_string(),
+      Bson::Symbol(_) => "Symbol".to_string(),
       Bson::String(_) => "String".to_string(),
       Bson::Array(_) => "Array".to_string(),
+      Bson::I32(_) => "Int".to_string(),
+      Bson::I64(_) => "Long".to_string(),
       Bson::Null => "Null".to_string(),
-      _ => unimplemented!(),
     }
   }
 
@@ -158,18 +171,11 @@ impl FieldType {
     match value {
       Bson::Array(arr) => {
         for val in arr.iter() {
-          let value_type = Self::get_value(val);
-
-          if let Some(value_type) = value_type {
-            self.values.push(value_type)
-          }
+          Self::get_value(val).map(|v| self.values.push(v));
         }
       }
       _ => {
-        let value_type = Self::get_value(&value);
-        if let Some(value_type) = value_type {
-          self.values.push(value_type)
-        }
+        Self::get_value(&value).map(|v| self.values.push(v));
       }
     }
   }
