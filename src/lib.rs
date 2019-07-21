@@ -162,10 +162,6 @@ impl SchemaParser {
     uint8.copy_to(&mut decoded_vec);
     let mut slice: &[u8] = &decoded_vec;
     let doc = decode_document(&mut slice)?.to_owned();
-    console::log_2(
-      &"can decode document".into(),
-      &JsValue::from_str(&serde_json::to_string(&doc).unwrap()),
-    );
     // write bson internally
     self.update_count();
     self.generate_field(doc, None, None);
