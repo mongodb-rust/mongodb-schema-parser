@@ -11,6 +11,7 @@ pub struct FieldType {
   pub values: Vec<ValueType>,
   pub has_duplicates: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(flatten)]
   pub schema: Option<SchemaParser>,
   pub unique: Option<usize>,
 }
@@ -41,7 +42,11 @@ impl FieldType {
         for val in arr.iter() {
           let bson_val = val.clone();
           match val {
-            Bson::Document(subdoc) => self.values.push(ValueType::Document(self.parse_document(subdoc.to_owned()))),
+            Bson::Document(subdoc) => {
+              let schema = self.parse_document(subdoc.to_owned());
+              self.bson_type = "Document".to_string();
+              self.set_schema(schema);
+            }
             _ => {
               Self::get_value(&bson_val).map(|v| self.values.push(v));
             }
@@ -63,11 +68,10 @@ impl FieldType {
 
   pub fn update_type(&mut self, value: &Bson) {
     let bson_type = self.bson_type.clone();
-    let path = self.path.clone();
 
     if &bson_type == "Document" {
       match &mut self.schema {
-        Some(schema_parser) => match &value {
+        Some(_) => match &value {
           Bson::Document(subdoc) => {
             let schema = self.parse_document(subdoc.to_owned());
             self.set_schema(schema)
@@ -88,7 +92,8 @@ impl FieldType {
         for val in arr.iter() {
           let bson_val = val.clone();
           match val {
-            Bson::Document(subdoc) => self.values.push(ValueType::Document(self.parse_document(subdoc.to_owned()))),
+            Bson::Document(_) => self.update_type(&bson_val),
+            Bson::Array(_) => self.update_value(&bson_val),
             _ => {
               Self::get_value(&bson_val).map(|v| self.values.push(v));
             }
@@ -101,7 +106,10 @@ impl FieldType {
     }
   }
 
-  fn parse_document(&mut self, subdoc: bson::ordered::OrderedDocument) -> SchemaParser {
+  fn parse_document(
+    &mut self,
+    subdoc: bson::ordered::OrderedDocument,
+  ) -> SchemaParser {
     let mut schema_parser = SchemaParser::new();
     schema_parser.generate_field(
       subdoc,
@@ -134,8 +142,10 @@ impl FieldType {
 
   pub fn finalise_type(&mut self, parent_count: usize) {
     self.set_probability(parent_count);
-    self.set_unique();
-    self.set_duplicates();
+    if self.bson_type != "Document" {
+      self.set_unique();
+      self.set_duplicates();
+    }
   }
 
   pub fn get_type(value: &Bson) -> String {
@@ -162,6 +172,11 @@ impl FieldType {
     }
   }
 
+  pub fn set_duplicates(&mut self) {
+    let duplicates = self.get_duplicates();
+    self.has_duplicates = duplicates
+  }
+
   fn get_duplicates(&mut self) -> bool {
     let unique = self.get_unique();
     let total_values = self.values.len();
@@ -173,11 +188,6 @@ impl FieldType {
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     vec.dedup();
     vec.len()
-  }
-
-  pub fn set_duplicates(&mut self) {
-    let duplicates = self.get_duplicates();
-    self.has_duplicates = duplicates
   }
 
   fn set_schema(&mut self, schema: SchemaParser) {

@@ -1,5 +1,3 @@
-use super::SchemaParser;
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 #[serde(untagged)]
 pub enum ValueType {
@@ -11,5 +9,4 @@ pub enum ValueType {
   Binary(Vec<u8>),
   Boolean(bool),
   Null(String),
-  Document(SchemaParser)
 }
