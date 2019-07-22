@@ -39,18 +39,19 @@ impl FieldType {
     match value {
       Bson::Array(arr) => {
         for val in arr.iter() {
-          Self::get_value(val).map(|v| self.values.push(v));
+          let bson_val = val.clone();
+          match val {
+            Bson::Document(subdoc) => self.values.push(ValueType::Document(self.parse_document(subdoc.to_owned()))),
+            _ => {
+              Self::get_value(&bson_val).map(|v| self.values.push(v));
+            }
+          };
         }
         self
       }
       Bson::Document(subdoc) => {
-        let mut schema_parser = SchemaParser::new();
-        schema_parser.generate_field(
-          subdoc.to_owned(),
-          Some(self.path.clone()),
-          Some(&self.count),
-        );
-        self.set_schema(schema_parser);
+        let schema = self.parse_document(subdoc.to_owned());
+        self.set_schema(schema);
         self
       }
       _ => {
@@ -67,11 +68,10 @@ impl FieldType {
     if &bson_type == "Document" {
       match &mut self.schema {
         Some(schema_parser) => match &value {
-          Bson::Document(subdoc) => schema_parser.generate_field(
-            subdoc.to_owned(),
-            Some(path),
-            Some(&self.count),
-          ),
+          Bson::Document(subdoc) => {
+            let schema = self.parse_document(subdoc.to_owned());
+            self.set_schema(schema)
+          }
           _ => unimplemented!(),
         },
         None => unimplemented!(),
@@ -80,6 +80,35 @@ impl FieldType {
 
     self.update_count();
     self.update_value(&value);
+  }
+
+  fn update_value(&mut self, value: &Bson) {
+    match value {
+      Bson::Array(arr) => {
+        for val in arr.iter() {
+          let bson_val = val.clone();
+          match val {
+            Bson::Document(subdoc) => self.values.push(ValueType::Document(self.parse_document(subdoc.to_owned()))),
+            _ => {
+              Self::get_value(&bson_val).map(|v| self.values.push(v));
+            }
+          }
+        }
+      }
+      _ => {
+        Self::get_value(&value).map(|v| self.values.push(v));
+      }
+    }
+  }
+
+  fn parse_document(&mut self, subdoc: bson::ordered::OrderedDocument) -> SchemaParser {
+    let mut schema_parser = SchemaParser::new();
+    schema_parser.generate_field(
+      subdoc,
+      Some(self.path.clone()),
+      Some(&self.count),
+    );
+    schema_parser
   }
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
@@ -165,19 +194,6 @@ impl FieldType {
 
   fn update_count(&mut self) {
     self.count += 1
-  }
-
-  fn update_value(&mut self, value: &Bson) {
-    match value {
-      Bson::Array(arr) => {
-        for val in arr.iter() {
-          Self::get_value(val).map(|v| self.values.push(v));
-        }
-      }
-      _ => {
-        Self::get_value(&value).map(|v| self.values.push(v));
-      }
-    }
   }
 }
 
