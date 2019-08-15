@@ -3,6 +3,9 @@ use failure::format_err;
 use js_sys::{Object, Uint8Array};
 use wasm_bindgen::prelude::*;
 
+use femme;
+use log;
+
 // Need to wrap schema parser impl for wasm suppport.
 // Here we are wrapping the exported to JS land methods and mathing on Result to
 // turn the error message to JsValue.
@@ -19,6 +22,7 @@ impl SchemaParser {
   #[wasm_bindgen(constructor)]
   #[wasm_bindgen(js_name = "new")]
   pub fn wasm_new() -> Self {
+    femme::start(log::LevelFilter::Trace).unwrap();
     Self::new()
   }
 

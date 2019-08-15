@@ -1,4 +1,4 @@
-use super::{Bson, FieldType};
+use super::{Bson, FieldType, Ordering};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -1,5 +1,5 @@
 #![allow(clippy::option_map_unit_fn)]
-use super::{Bson, SchemaParser, ValueType};
+use super::{console, log, Bson, SchemaParser, ValueType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FieldType {
@@ -41,16 +41,7 @@ impl FieldType {
       Bson::Array(arr) => {
         for val in arr.iter() {
           let bson_val = val.clone();
-          match val {
-            Bson::Document(subdoc) => {
-              let schema = self.parse_document(subdoc.to_owned());
-              self.bson_type = "Document".to_string();
-              self.set_schema(schema);
-            }
-            _ => {
-              Self::get_value(&bson_val).map(|v| self.values.push(v));
-            }
-          };
+          self.get_value(&bson_val).map(|v| self.values.push(v));
         }
         self
       }
@@ -60,7 +51,7 @@ impl FieldType {
         self
       }
       _ => {
-        Self::get_value(&bson_value).map(|v| self.values.push(v));
+        self.get_value(&bson_value).map(|v| self.values.push(v));
         self
       }
     }
@@ -95,13 +86,13 @@ impl FieldType {
             Bson::Document(_) => self.update_type(&bson_val),
             Bson::Array(_) => self.update_value(&bson_val),
             _ => {
-              Self::get_value(&bson_val).map(|v| self.values.push(v));
+              self.get_value(&bson_val).map(|v| self.values.push(v));
             }
           }
         }
       }
       _ => {
-        Self::get_value(&value).map(|v| self.values.push(v));
+        self.get_value(&value).map(|v| self.values.push(v));
       }
     }
   }
@@ -119,12 +110,15 @@ impl FieldType {
     schema_parser
   }
 
-  pub fn get_value(value: &Bson) -> Option<ValueType> {
+  pub fn get_value(&mut self, value: &Bson) -> Option<ValueType> {
     match value {
       Bson::RegExp(val, _)
       | Bson::JavaScriptCode(val)
       | Bson::JavaScriptCodeWithScope(val, _)
       | Bson::Symbol(val) => Some(ValueType::Str(val.to_string())),
+      Bson::Document(subdoc) => {
+        Some(ValueType::Document(self.parse_document(subdoc.to_owned())))
+      }
       Bson::I64(num) | Bson::TimeStamp(num) => Some(ValueType::I64(*num)),
       Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
       Bson::UtcDatetime(date) => Some(ValueType::Str(date.clone().to_string())),
@@ -184,6 +178,9 @@ impl FieldType {
   }
 
   fn get_unique(&mut self) -> usize {
+    if self.bson_type == "Document" {
+      return self.values.len();
+    }
     let mut vec = self.values.clone();
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     vec.dedup();
@@ -232,36 +229,46 @@ mod tests {
 
   #[test]
   fn it_gets_value_i32() {
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     let bson_value = Bson::I32(1234);
-    let value = FieldType::get_value(&bson_value);
+    let value = field_type.get_value(&bson_value);
     assert_eq!(value, Some(ValueType::I32(1234)));
   }
 
   #[test]
   fn it_gets_value_i64() {
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     let bson_value = Bson::I64(1234);
-    let value = FieldType::get_value(&bson_value);
+    let value = field_type.get_value(&bson_value);
     assert_eq!(value, Some(ValueType::I64(1234)));
   }
 
   #[test]
   fn it_gets_value_floating_point() {
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     let bson_value = Bson::FloatingPoint(1.2);
-    let value = FieldType::get_value(&bson_value);
+    let value = field_type.get_value(&bson_value);
     assert_eq!(value, Some(ValueType::FloatingPoint(1.2)));
   }
 
   #[test]
   fn it_gets_value_boolean() {
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     let bson_value = Bson::Boolean(true);
-    let value = FieldType::get_value(&bson_value);
+    let value = field_type.get_value(&bson_value);
     assert_eq!(value, Some(ValueType::Boolean(true)));
   }
 
   #[test]
   fn it_gets_value_string() {
+    let mut field_type =
+      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
     let bson_value = Bson::String("cats".to_string());
-    let value = FieldType::get_value(&bson_value);
+    let value = field_type.get_value(&bson_value);
     assert_eq!(value, Some(ValueType::Str("cats".to_string())));
   }
 

@@ -56,6 +56,8 @@ extern crate failure;
 use failure::format_err;
 // extern crate test;
 
+use std::cmp::Ordering;
+
 extern crate bson;
 use bson::{bson, decode_document, doc, Bson, Document};
 
@@ -87,6 +89,8 @@ use crate::field_type::FieldType;
 
 mod value_type;
 use crate::value_type::ValueType;
+
+use log;
 
 // WASM Api of the Schema Parser.
 mod lib_wasm;
@@ -281,6 +285,32 @@ impl SchemaParser {
   #[inline]
   fn update_count(&mut self) {
     self.count += 1
+  }
+
+  // lazily compare SchemaParsers: looking into self.fields.len() as the
+  // comparator
+  //
+  // TODO: write a better way of comparing self.fields as that's a HashMap that
+  // does not have a PartialOrd implementation
+  fn compare(&self, other: &SchemaParser) -> isize {
+    if self.fields.len() < other.fields.len() {
+      -1
+    } else if self.fields.len() > other.fields.len() {
+      1
+    } else {
+      0
+    }
+  }
+}
+
+impl PartialOrd<SchemaParser> for SchemaParser {
+  fn partial_cmp(&self, other: &SchemaParser) -> Option<Ordering> {
+    match self.compare(other) {
+      v if v == 0 => Some(Ordering::Equal),
+      v if v > 0 => Some(Ordering::Greater),
+      v if v < 0 => Some(Ordering::Less),
+      _ => None,
+    }
   }
 }
 
