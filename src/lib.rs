@@ -52,17 +52,14 @@
 #![allow(clippy::new_without_default)]
 // #![feature(test)]
 
-extern crate failure;
 use failure::format_err;
 // extern crate test;
 
-extern crate bson;
 use bson::{bson, decode_document, doc, Bson, Document};
 
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
-extern crate serde_json;
 use serde_json::Value;
 
 use js_sys::{Object, Uint8Array};
@@ -72,7 +69,7 @@ use web_sys::console;
 
 // using custom allocator which is built specifically for wasm; makes it smaller
 // + faster
-extern crate wee_alloc;
+use wee_alloc;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
@@ -133,7 +130,10 @@ impl SchemaParser {
     let val: Value = serde_json::from_str(json)?;
     let bson = Bson::from(val);
     // should do a match for NoneError
-    let doc = bson.as_document().unwrap().to_owned();
+    let doc = bson
+      .as_document()
+      .ok_or_else(|| format_err!("Failed to parse bson"))?
+      .to_owned();
     self.update_count();
     self.generate_field(doc, None, None);
     Ok(())
@@ -212,7 +212,7 @@ impl SchemaParser {
     &mut self,
     doc: Document,
     path: Option<String>,
-    count: Option<&usize>,
+    count: Option<usize>,
   ) {
     if let Some(_count) = count {
       self.update_count();
@@ -228,10 +228,10 @@ impl SchemaParser {
     // check if we already have a field for this key;
     // if name exist, call self.update_field, otherwise create new
     if self.fields.contains_key(&key) {
-      self.update_field(&key, &value);
+      self.update_field(&key, value);
     } else {
-      let mut field = Field::new(key, &path);
-      field.create_type(&value);
+      let mut field = Field::new(key, path);
+      field.create_type(value);
       self.fields.insert(field.name.to_string(), field);
     }
   }
@@ -259,7 +259,7 @@ impl SchemaParser {
     for field in self.fields.values_mut() {
       // If bson_types includes a Document, find that document and let its schema
       // field update its own missing fields.
-      let field_type = field.types.get_mut(&"Document".to_string());
+      let field_type = field.types.get_mut(crate::field_type::DOCUMENT);
       if let Some(field_type) = field_type {
         let schema = &mut field_type.schema;
         if let Some(schema) = schema {
@@ -377,7 +377,7 @@ mod tests {
     let output = schema_parser.flush();
     let type_field = output.fields.get("type");
     if let Some(type_field) = type_field {
-      let doc = type_field.types.get("Document");
+      let doc = type_field.types.get(crate::field_type::DOCUMENT);
       if let Some(doc) = doc {
         assert_eq!(doc.count, 2);
 

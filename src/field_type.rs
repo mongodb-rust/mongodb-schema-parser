@@ -15,10 +15,28 @@ pub struct FieldType {
   pub unique: Option<usize>,
 }
 
+pub static JAVASCRIPT_CODE_WITH_SCOPE: &str = "JavaScriptCodeWithScope";
+pub static JAVASCRIPT_CODE: &str = "JavaScriptCode";
+pub static FLOATING_POINT: &str = "Double";
+pub static UTCDATE_TIME: &str = "UtcDatetime";
+pub static DECIMAL_128: &str = "Decimal128";
+pub static TIMESTAMP: &str = "Timestamp";
+pub static BINARY: &str = "BinData";
+pub static REGEXP: &str = "Regex";
+pub static DOCUMENT: &str = "Document";
+pub static OBJECTID: &str = "ObjectId";
+pub static BOOLEAN: &str = "Boolean";
+pub static SYMBOL: &str = "Symbol";
+pub static STRING: &str = "String";
+pub static ARRAY: &str = "Array";
+pub static I32: &str = "Int";
+pub static I64: &str = "Long";
+pub static NULL: &str = "Null";
+
 impl FieldType {
-  pub fn new(path: &str, value: &Bson) -> Self {
+  pub fn new<S: Into<String>>(path: S, value: &Bson) -> Self {
     FieldType {
-      path: path.to_string(),
+      path: path.into(),
       bson_type: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
@@ -32,45 +50,39 @@ impl FieldType {
     }
   }
 
-  pub fn add_to_type(mut self, value: &Bson, parent_count: usize) -> Self {
+  pub fn add_to_type(&mut self, value: &Bson, parent_count: usize) {
     let bson_value = value.clone();
     self.set_probability(parent_count);
 
     match value {
       Bson::Array(arr) => {
-        for val in arr.iter() {
-          Self::get_value(val).map(|v| self.values.push(v));
-        }
         self
+          .values
+          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
       }
       Bson::Document(subdoc) => {
         let mut schema_parser = SchemaParser::new();
         schema_parser.generate_field(
           subdoc.to_owned(),
           Some(self.path.clone()),
-          Some(&self.count),
+          Some(self.count),
         );
         self.set_schema(schema_parser);
-        self
       }
       _ => {
         Self::get_value(&bson_value).map(|v| self.values.push(v));
-        self
       }
     }
   }
 
   pub fn update_type(&mut self, value: &Bson) {
-    let bson_type = self.bson_type.clone();
-    let path = self.path.clone();
-
-    if &bson_type == "Document" {
+    if self.bson_type == "Document" {
       match &mut self.schema {
         Some(schema_parser) => match &value {
           Bson::Document(subdoc) => schema_parser.generate_field(
             subdoc.to_owned(),
-            Some(path),
-            Some(&self.count),
+            Some(self.path.clone()),
+            Some(self.count),
           ),
           _ => unimplemented!(),
         },
@@ -112,24 +124,24 @@ impl FieldType {
   pub fn get_type(value: &Bson) -> String {
     match value {
       Bson::JavaScriptCodeWithScope(_, _) => {
-        "JavaScriptCodeWithScope".to_string()
+        JAVASCRIPT_CODE_WITH_SCOPE.to_string()
       }
-      Bson::JavaScriptCode(_) => "JavaScriptCode".to_string(),
-      Bson::FloatingPoint(_) => "Double".to_string(),
-      Bson::UtcDatetime(_) => "UtcDatetime".to_string(),
-      Bson::Decimal128(_) => "Decimal128".to_string(),
-      Bson::TimeStamp(_) => "Timestamp".to_string(),
-      Bson::Binary(_, _) => "BinData".to_string(),
-      Bson::RegExp(_, _) => "Regex".to_string(),
-      Bson::Document(_) => "Document".to_string(),
-      Bson::ObjectId(_) => "ObjectId".to_string(),
-      Bson::Boolean(_) => "Boolean".to_string(),
-      Bson::Symbol(_) => "Symbol".to_string(),
-      Bson::String(_) => "String".to_string(),
-      Bson::Array(_) => "Array".to_string(),
-      Bson::I32(_) => "Int".to_string(),
-      Bson::I64(_) => "Long".to_string(),
-      Bson::Null => "Null".to_string(),
+      Bson::JavaScriptCode(_) => JAVASCRIPT_CODE.to_string(),
+      Bson::FloatingPoint(_) => FLOATING_POINT.to_string(),
+      Bson::UtcDatetime(_) => UTCDATE_TIME.to_string(),
+      Bson::Decimal128(_) => DECIMAL_128.to_string(),
+      Bson::TimeStamp(_) => TIMESTAMP.to_string(),
+      Bson::Binary(_, _) => BINARY.to_string(),
+      Bson::RegExp(_, _) => REGEXP.to_string(),
+      Bson::Document(_) => DOCUMENT.to_string(),
+      Bson::ObjectId(_) => OBJECTID.to_string(),
+      Bson::Boolean(_) => BOOLEAN.to_string(),
+      Bson::Symbol(_) => SYMBOL.to_string(),
+      Bson::String(_) => STRING.to_string(),
+      Bson::Array(_) => ARRAY.to_string(),
+      Bson::I32(_) => I32.to_string(),
+      Bson::I64(_) => I64.to_string(),
+      Bson::Null => NULL.to_string(),
     }
   }
 
@@ -170,9 +182,9 @@ impl FieldType {
   fn update_value(&mut self, value: &Bson) {
     match value {
       Bson::Array(arr) => {
-        for val in arr.iter() {
-          Self::get_value(val).map(|v| self.values.push(v));
-        }
+        self
+          .values
+          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
       }
       _ => {
         Self::get_value(&value).map(|v| self.values.push(v));

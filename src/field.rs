@@ -12,11 +12,15 @@ pub struct Field {
 }
 
 impl Field {
-  pub fn new(name: String, path: &str) -> Self {
+  pub fn new<T, U>(name: T, path: U) -> Self
+  where
+    T: Into<String>,
+    U: Into<String>,
+  {
     Field {
-      name,
+      name: name.into(),
       count: 1,
-      path: path.to_string(),
+      path: path.into(),
       bson_types: Vec::new(),
       probability: 0.0,
       types: HashMap::new(),
@@ -24,9 +28,9 @@ impl Field {
   }
 
   pub fn create_type(&mut self, value: &Bson) {
-    let field_type =
-      FieldType::new(&self.path, &value).add_to_type(&value, self.count);
-    self.bson_types.push(field_type.bson_type.clone());
+    let mut field_type = FieldType::new(&self.path, &value);
+    field_type.add_to_type(&value, self.count);
+    self.bson_types.push(field_type.bson_type.to_string());
     self
       .types
       .insert(FieldType::get_type(&value), field_type.to_owned());
@@ -39,8 +43,7 @@ impl Field {
   pub fn get_path(name: String, path: Option<String>) -> String {
     match path {
       None => name,
-      Some(path) => {
-        let mut path = path.clone();
+      Some(mut path) => {
         path.push_str(".");
         path.push_str(&name);
         path
@@ -57,13 +60,14 @@ impl Field {
 
   pub fn update_for_missing(&mut self, missing: usize) {
     // create new field_types of "Null" for missing fields.
-    let mut null_field_type = FieldType::new(&self.path, &Bson::Null)
-      .add_to_type(&Bson::Null, self.count);
-    self.bson_types.push(null_field_type.bson_type.clone());
+    let mut null_field_type = FieldType::new(&self.path, &Bson::Null);
+    null_field_type.add_to_type(&Bson::Null, self.count);
     null_field_type.count = missing;
-    self
-      .types
-      .insert("Null".to_string(), null_field_type.to_owned());
+    self.types.insert(
+      crate::field_type::NULL.to_string(),
+      null_field_type.to_owned(),
+    );
+    self.bson_types.push(null_field_type.bson_type);
     // need to update internal field count, since otherwise on the next
     // iteration we will get integer overflow
     self.update_count_by(missing);
@@ -93,7 +97,7 @@ mod tests {
     let path = "Nori.cat";
     let count = 1;
 
-    let field = Field::new("Nori".to_string(), &path);
+    let field = Field::new("Nori", path);
 
     assert_eq!(field.name, "Nori".to_string());
     assert_eq!(field.path, path);
@@ -104,7 +108,7 @@ mod tests {
   // fn bench_it_creates_new(bench: &mut Bencher) {
   //   let path = "Nori.cat";
 
-  //   bench.iter(|| Field::new("Nori".to_string(), &path));
+  //   bench.iter(|| Field::new("Nori", &path));
   // }
 
   #[test]
@@ -134,21 +138,21 @@ mod tests {
 
   #[test]
   fn it_updates_count() {
-    let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
+    let mut field = Field::new("Chashu", "Chashu.cat");
     field.update_count();
     assert_eq!(field.count, 2);
   }
 
   // #[bench]
   // fn bench_it_updates_count(bench: &mut Bencher) {
-  //   let mut field = Field::new("Chashu".to_string(), "Chashu.cat");
+  //   let mut field = Field::new("Chashu", "Chashu.cat");
   //   bench.iter(|| field.update_count());
   // }
 
   #[allow(clippy::float_cmp)]
   #[test]
   fn it_sets_probability() {
-    let mut field = Field::new("Nori".to_string(), "Nori.cat");
+    let mut field = Field::new("Nori", "Nori.cat");
     field.set_probability(10);
     assert_eq!(field.probability, 0.1);
   }
