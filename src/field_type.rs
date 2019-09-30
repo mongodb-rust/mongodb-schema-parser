@@ -122,7 +122,7 @@ impl FieldType {
       Bson::Binary(_, _) => "BinData".to_string(),
       Bson::RegExp(_, _) => "Regex".to_string(),
       Bson::Document(_) => "Document".to_string(),
-      Bson::ObjectId(_) => "ObjectId".to_string(),
+      Bson::ObjectId(_) => "ObjectID".to_string(),
       Bson::Boolean(_) => "Boolean".to_string(),
       Bson::Symbol(_) => "Symbol".to_string(),
       Bson::String(_) => "String".to_string(),

@@ -1,6 +1,6 @@
 use super::SchemaParser;
 use failure::format_err;
-use js_sys::{Object, Uint8Array};
+use js_sys::{Object, Uint8Array, TypeError};
 use wasm_bindgen::prelude::*;
 
 // Need to wrap schema parser impl for wasm suppport.
