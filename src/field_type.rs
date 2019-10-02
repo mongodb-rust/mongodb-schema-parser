@@ -29,7 +29,7 @@ pub static BOOLEAN: &str = "Boolean";
 pub static SYMBOL: &str = "Symbol";
 pub static STRING: &str = "String";
 pub static ARRAY: &str = "Array";
-pub static I32: &str = "Int";
+pub static I32: &str = "Int32";
 pub static I64: &str = "Long";
 pub static NULL: &str = "Null";
 
