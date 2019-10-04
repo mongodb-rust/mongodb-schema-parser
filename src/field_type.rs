@@ -64,7 +64,7 @@ impl FieldType {
         let mut schema_parser = SchemaParser::new();
         schema_parser.generate_field(
           subdoc.to_owned(),
-          Some(self.path.clone()),
+          Some(self.path.as_str()),
           Some(self.count),
         );
         self.set_schema(schema_parser);
@@ -81,7 +81,7 @@ impl FieldType {
         Some(schema_parser) => match &value {
           Bson::Document(subdoc) => schema_parser.generate_field(
             subdoc.to_owned(),
-            Some(self.path.clone()),
+            Some(self.path.as_str()),
             Some(self.count),
           ),
           _ => unimplemented!(),
@@ -180,15 +180,12 @@ impl FieldType {
   }
 
   fn update_value(&mut self, value: &Bson) {
-    match value {
-      Bson::Array(arr) => {
-        self
-          .values
-          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
-      }
-      _ => {
-        Self::get_value(&value).map(|v| self.values.push(v));
-      }
+    if let Bson::Array(arr) = value {
+      self
+        .values
+        .extend(arr.iter().filter_map(|val| Self::get_value(val)));
+    } else {
+      Self::get_value(&value).map(|v| self.values.push(v));
     }
   }
 }

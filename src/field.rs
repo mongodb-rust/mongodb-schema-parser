@@ -28,27 +28,20 @@ impl Field {
   }
 
   pub fn create_type(&mut self, value: &Bson) {
-    let mut field_type = FieldType::new(&self.path, &value);
-    field_type.add_to_type(&value, self.count);
+    let mut field_type = FieldType::new(&self.path, value);
+    field_type.add_to_type(value, self.count);
     self.bson_types.push(field_type.bson_type.to_string());
     self
       .types
-      .insert(FieldType::get_type(&value), field_type.to_owned());
+      .insert(FieldType::get_type(value), field_type.to_owned());
   }
 
   pub fn does_field_type_exist(&mut self, value: &Bson) -> bool {
-    self.bson_types.contains(&FieldType::get_type(&value))
+    self.bson_types.contains(&FieldType::get_type(value))
   }
 
-  pub fn get_path(name: String, path: Option<String>) -> String {
-    match path {
-      None => name,
-      Some(mut path) => {
-        path.push_str(".");
-        path.push_str(&name);
-        path
-      }
-    }
+  pub fn get_path(name: &str, path: Option<&str>) -> String {
+    path.map_or(name.to_owned(), |p| format!("{}.{}", p, name))
   }
 
   pub fn finalise_field(&mut self, parent_count: usize) {
@@ -63,10 +56,9 @@ impl Field {
     let mut null_field_type = FieldType::new(&self.path, &Bson::Null);
     null_field_type.add_to_type(&Bson::Null, self.count);
     null_field_type.count = missing;
-    self.types.insert(
-      crate::field_type::NULL.to_string(),
-      null_field_type.to_owned(),
-    );
+    self
+      .types
+      .insert(crate::field_type::NULL.to_string(), null_field_type.clone());
     self.bson_types.push(null_field_type.bson_type);
     // need to update internal field count, since otherwise on the next
     // iteration we will get integer overflow
@@ -113,17 +105,14 @@ mod tests {
 
   #[test]
   fn it_gets_path_if_none() {
-    let path = Field::get_path(String::from("address"), None);
-    assert_eq!(path, String::from("address"));
+    let path = Field::get_path("address", None);
+    assert_eq!(path, "address");
   }
 
   #[test]
   fn it_gets_path_if_some() {
-    let path = Field::get_path(
-      String::from("postal_code"),
-      Some(String::from("address")),
-    );
-    assert_eq!(path, String::from("address.postal_code"));
+    let path = Field::get_path("postal_code", Some("address"));
+    assert_eq!(path, "address.postal_code");
   }
 
   // #[bench]

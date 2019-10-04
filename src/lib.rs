@@ -161,7 +161,7 @@ impl SchemaParser {
     // byte stream that implements a reader and u8 slice does this.
     uint8.copy_to(&mut decoded_vec);
     let mut slice: &[u8] = &decoded_vec;
-    let doc = decode_document(&mut slice)?.to_owned();
+    let doc = decode_document(&mut slice)?;
     // write bson internally
     self.update_count();
     self.generate_field(doc, None, None);
@@ -211,20 +211,25 @@ impl SchemaParser {
   fn generate_field(
     &mut self,
     doc: Document,
-    path: Option<String>,
+    path: Option<&str>,
     count: Option<usize>,
   ) {
     if let Some(_count) = count {
       self.update_count();
     }
     for (key, value) in doc {
-      let current_path = Field::get_path(key.to_owned(), path.to_owned());
-      self.update_or_create_field(key.to_owned(), &value, &current_path)
+      let current_path = Field::get_path(key.as_str(), path);
+      self.update_or_create_field(key, &value, current_path)
     }
   }
 
   #[inline]
-  fn update_or_create_field(&mut self, key: String, value: &Bson, path: &str) {
+  fn update_or_create_field(
+    &mut self,
+    key: String,
+    value: &Bson,
+    path: String,
+  ) {
     // check if we already have a field for this key;
     // if name exist, call self.update_field, otherwise create new
     if self.fields.contains_key(&key) {
@@ -241,14 +246,14 @@ impl SchemaParser {
     let field = self.fields.get_mut(key);
     if let Some(field) = field {
       field.update_count();
-      if !field.does_field_type_exist(&value) {
+      if !field.does_field_type_exist(value) {
         // field type doesn't exist in field.types, create a new field_type
-        field.create_type(&value);
+        field.create_type(value);
       } else {
-        let type_val = FieldType::get_type(&value);
+        let type_val = FieldType::get_type(value);
         let field_type = field.types.get_mut(&type_val);
         if let Some(field_type) = field_type {
-          field_type.update_type(&value);
+          field_type.update_type(value);
         }
       }
     }
