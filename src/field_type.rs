@@ -1,9 +1,10 @@
 #![allow(clippy::option_map_unit_fn)]
-use super::{Bson, SchemaParser, ValueType};
+use super::{Bson, SchemaParser, ValueType, HashMap};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FieldType {
   pub path: String,
+  // pub name: String,
   pub count: usize,
   pub bson_type: String,
   pub probability: f32,
@@ -11,7 +12,11 @@ pub struct FieldType {
   pub values: Vec<ValueType>,
   pub has_duplicates: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(flatten)]
   pub schema: Option<SchemaParser>,
+  #[serde(skip_serializing_if = "HashMap::is_empty")]
+  #[serde(flatten)]
+  pub types: HashMap<String, FieldType>,
   pub unique: Option<usize>,
 }
 
@@ -37,6 +42,9 @@ impl FieldType {
   pub fn new<S: Into<String>>(path: S, value: &Bson) -> Self {
     FieldType {
       path: path.into(),
+      // name is the same as path, as there are several modules upstream that
+      // look specifically at name field
+      // name: path.into(),
       bson_type: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
@@ -46,6 +54,7 @@ impl FieldType {
       // on finalize method, should also destructure it somehow (everything from
       // this structure should come up one level)
       schema: None,
+      types: HashMap::new(),
       unique: None,
     }
   }
@@ -56,9 +65,21 @@ impl FieldType {
 
     match value {
       Bson::Array(arr) => {
-        self
-          .values
-          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
+        // push items into a types array for nested documents. if current item
+        // type is a Document, create another schema parser;
+        for val in arr.iter() {
+          let current_type = Self::get_type(val);
+
+          if self.types.contains_key(&current_type) {
+            self.types.get_mut(&current_type).unwrap().add_to_type(val, self.count);
+          } else {
+             let mut field_type = FieldType::new(&self.path, &val);
+             field_type.add_to_type(&val, self.count);
+             self.types.insert(current_type, field_type.to_owned());
+          }
+
+          Self::get_value(&val).map(|v| self.values.push(v));
+        }
       }
       Bson::Document(subdoc) => {
         let mut schema_parser = SchemaParser::new();
@@ -92,6 +113,19 @@ impl FieldType {
 
     self.update_count();
     self.update_value(&value);
+  }
+
+  fn update_value(&mut self, value: &Bson) {
+    match value {
+      Bson::Array(arr) => {
+        self
+          .values
+          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
+      }
+      _ => {
+        Self::get_value(&value).map(|v| self.values.push(v));
+      }
+    }
   }
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
@@ -177,19 +211,6 @@ impl FieldType {
 
   fn update_count(&mut self) {
     self.count += 1
-  }
-
-  fn update_value(&mut self, value: &Bson) {
-    match value {
-      Bson::Array(arr) => {
-        self
-          .values
-          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
-      }
-      _ => {
-        Self::get_value(&value).map(|v| self.values.push(v));
-      }
-    }
   }
 }
 
