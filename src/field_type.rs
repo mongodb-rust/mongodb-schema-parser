@@ -7,15 +7,16 @@ pub struct FieldType {
   // pub name: String,
   pub count: usize,
   pub bson_type: String,
+  pub name: String, 
   pub probability: f32,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub values: Vec<ValueType>,
+  pub lengths: Vec<usize>,
   pub has_duplicates: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
   #[serde(flatten)]
   pub schema: Option<SchemaParser>,
   #[serde(skip_serializing_if = "HashMap::is_empty")]
-  #[serde(flatten)]
   pub types: HashMap<String, FieldType>,
   pub unique: Option<usize>,
 }
@@ -48,8 +49,10 @@ impl FieldType {
       bson_type: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
+      name: FieldType::get_type(&value),
       values: Vec::new(),
       has_duplicates: false,
+      lengths: Vec::new(),
       // serde json should remove when null
       // on finalize method, should also destructure it somehow (everything from
       // this structure should come up one level)
@@ -77,7 +80,7 @@ impl FieldType {
              field_type.add_to_type(&val, self.count);
              self.types.insert(current_type, field_type.to_owned());
           }
-
+          self.lengths.push(arr.len());
           Self::get_value(&val).map(|v| self.values.push(v));
         }
       }
@@ -118,9 +121,19 @@ impl FieldType {
   fn update_value(&mut self, value: &Bson) {
     match value {
       Bson::Array(arr) => {
-        self
-          .values
-          .extend(arr.iter().filter_map(|val| Self::get_value(val)));
+        for val in arr.iter() {
+          let current_type = Self::get_type(val);
+
+          if self.types.contains_key(&current_type) {
+            self.types.get_mut(&current_type).unwrap().add_to_type(val, self.count);
+          } else {
+             let mut field_type = FieldType::new(&self.path, &val);
+             field_type.add_to_type(&val, self.count);
+             self.types.insert(current_type, field_type.to_owned());
+          }
+          self.lengths.push(arr.len());
+          Self::get_value(&val).map(|v| self.values.push(v));
+        }
       }
       _ => {
         Self::get_value(&value).map(|v| self.values.push(v));
