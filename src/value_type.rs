@@ -6,6 +6,7 @@ pub enum ValueType {
   I64(i64),
   Decimal128(String),
   FloatingPoint(f64),
+  Array(Vec<ValueType>),
   Binary(Vec<u8>),
   Boolean(bool),
   Null(String),
