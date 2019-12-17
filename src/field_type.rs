@@ -4,13 +4,13 @@ use super::{Bson, SchemaParser, ValueType, HashMap};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FieldType {
   pub path: String,
-  // pub name: String,
   pub count: usize,
   pub bson_type: String,
-  pub name: String, 
+  pub name: String,
   pub probability: f32,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub values: Vec<ValueType>,
+  #[serde(skip_serializing_if = "Vec::is_empty")]
   pub lengths: Vec<usize>,
   pub has_duplicates: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -18,6 +18,7 @@ pub struct FieldType {
   pub schema: Option<SchemaParser>,
   #[serde(skip_serializing_if = "HashMap::is_empty")]
   pub types: HashMap<String, FieldType>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub unique: Option<usize>,
 }
 
@@ -43,19 +44,15 @@ impl FieldType {
   pub fn new<S: Into<String>>(path: S, value: &Bson) -> Self {
     FieldType {
       path: path.into(),
-      // name is the same as path, as there are several modules upstream that
-      // look specifically at name field
-      // name: path.into(),
       bson_type: FieldType::get_type(&value),
       count: 1,
       probability: 0.0,
+      // name is the same as path, as there are several modules upstream that
+      // look specifically at name field
       name: FieldType::get_type(&value),
       values: Vec::new(),
       has_duplicates: false,
       lengths: Vec::new(),
-      // serde json should remove when null
-      // on finalize method, should also destructure it somehow (everything from
-      // this structure should come up one level)
       schema: None,
       types: HashMap::new(),
       unique: None,
@@ -74,7 +71,7 @@ impl FieldType {
           let current_type = Self::get_type(val);
 
           if self.types.contains_key(&current_type) {
-            self.types.get_mut(&current_type).unwrap().add_to_type(val, self.count);
+            self.types.get_mut(&current_type).unwrap().add_to_type(&val, self.count);
           } else {
              let mut field_type = FieldType::new(&self.path, &val);
              field_type.add_to_type(&val, self.count);
@@ -125,7 +122,7 @@ impl FieldType {
           let current_type = Self::get_type(val);
 
           if self.types.contains_key(&current_type) {
-            self.types.get_mut(&current_type).unwrap().add_to_type(val, self.count);
+            self.types.get_mut(&current_type).unwrap().add_to_type(&val, self.count);
           } else {
              let mut field_type = FieldType::new(&self.path, &val);
              field_type.add_to_type(&val, self.count);
