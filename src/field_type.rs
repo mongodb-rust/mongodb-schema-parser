@@ -1,5 +1,5 @@
 #![allow(clippy::option_map_unit_fn)]
-use super::{Bson, SchemaParser, ValueType, HashMap};
+use super::{Bson, SchemaParser, ValueType, HashMap, console};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FieldType {
@@ -72,23 +72,29 @@ impl FieldType {
 
           if self.types.contains_key(&current_type) {
             self.types.get_mut(&current_type).unwrap().add_to_type(&val, self.count);
-          } else {
-             let mut field_type = FieldType::new(&self.path, &val);
-             field_type.add_to_type(&val, self.count);
-             self.types.insert(current_type, field_type.to_owned());
+          // } else {
+          //    let mut field_type = FieldType::new(&self.path, &val);
+          //    field_type.add_to_type(&val, self.count);
+          //    self.types.insert(current_type, field_type.to_owned());
           }
-          self.lengths.push(arr.len());
-          Self::get_value(&val).map(|v| self.values.push(v));
+            self.lengths.push(arr.len());
+            Self::get_value(&val).map(|v| self.values.push(v));
         }
       }
       Bson::Document(subdoc) => {
-        let mut schema_parser = SchemaParser::new();
-        schema_parser.generate_field(
-          subdoc.to_owned(),
-          Some(self.path.clone()),
-          Some(self.count),
-        );
-        self.set_schema(schema_parser);
+        if self.types.contains_key("Document") {
+          let current_doc = self.types.get_mut("Document").unwrap();
+          let doc = current_doc.schema.as_mut().unwrap();
+          doc.generate_field(subdoc.to_owned(), Some(self.path.clone()), Some(self.count));
+        } else {
+          let mut schema_parser = SchemaParser::new();
+          schema_parser.generate_field(
+            subdoc.to_owned(),
+            Some(self.path.clone()),
+            Some(self.count),
+          );
+          self.set_schema(schema_parser);
+        }
       }
       _ => {
         Self::get_value(&bson_value).map(|v| self.values.push(v));
@@ -123,10 +129,11 @@ impl FieldType {
 
           if self.types.contains_key(&current_type) {
             self.types.get_mut(&current_type).unwrap().add_to_type(&val, self.count);
-          } else {
-             let mut field_type = FieldType::new(&self.path, &val);
-             field_type.add_to_type(&val, self.count);
-             self.types.insert(current_type, field_type.to_owned());
+          // } else {
+              // let mut field_type = FieldType::new(&self.path, &val);
+              // console::log_2(&"updating value".into(), &val.to_string().into());
+              // field_type.add_to_type(&val, self.count);
+              //self.types.insert(current_type, field_type.to_owned());
           }
           self.lengths.push(arr.len());
           Self::get_value(&val).map(|v| self.values.push(v));
