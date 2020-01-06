@@ -28,7 +28,7 @@ impl Field {
   }
 
   pub fn create_type(&mut self, value: &Bson) {
-    let mut field_type = FieldType::new(&self.path, &value);
+    let mut field_type = FieldType::new(&self.path, &FieldType::get_type(&value));
     field_type.add_to_type(&value, self.count);
     self.bson_types.push(field_type.bson_type.to_string());
     self
@@ -60,7 +60,7 @@ impl Field {
 
   pub fn update_for_missing(&mut self, missing: usize) {
     // create new field_types of "Null" for missing fields.
-    let mut null_field_type = FieldType::new(&self.path, &Bson::Null);
+    let mut null_field_type = FieldType::new(&self.path, &FieldType::get_type(&Bson::Null));
     null_field_type.add_to_type(&Bson::Null, self.count);
     null_field_type.count = missing;
     self.types.insert(

@@ -41,15 +41,19 @@ pub static I64: &str = "Long";
 pub static NULL: &str = "Null";
 
 impl FieldType {
-  pub fn new<S: Into<String>>(path: S, value: &Bson) -> Self {
+  pub fn new<T, U>(path: T, bson_type: U) -> Self
+  where
+    T: Into<String>,
+    U: Into<String> + Copy,
+   {
     FieldType {
       path: path.into(),
-      bson_type: FieldType::get_type(&value),
+      bson_type: bson_type.into(),
       count: 1,
       probability: 0.0,
       // name is the same as path, as there are several modules upstream that
       // look specifically at name field
-      name: FieldType::get_type(&value),
+      name: bson_type.into(),
       values: Vec::new(),
       has_duplicates: false,
       lengths: Vec::new(),
@@ -71,29 +75,32 @@ impl FieldType {
           let current_type = Self::get_type(val);
 
           if self.types.contains_key(&current_type) {
+            // console::log_2(&"current type contains key".into(), &current_type.clone().into());
+            // console::log_2(&"current self field_type contains key".into(), &self.path.clone().into());
             self.types.get_mut(&current_type).unwrap().add_to_type(&val, self.count);
-          // } else {
-          //    let mut field_type = FieldType::new(&self.path, &val);
-          //    field_type.add_to_type(&val, self.count);
-          //    self.types.insert(current_type, field_type.to_owned());
+          } else {
+            let mut field_type = FieldType::new(&self.path, &current_type);
+            field_type.add_to_type(&val, self.count); // this is recursive
+            self.types.insert(current_type, field_type.clone());
           }
-            self.lengths.push(arr.len());
-            Self::get_value(&val).map(|v| self.values.push(v));
+          self.lengths.push(arr.len());
+          Self::get_value(&val).map(|v| self.values.push(v));
         }
       }
       Bson::Document(subdoc) => {
-        if self.types.contains_key("Document") {
-          let current_doc = self.types.get_mut("Document").unwrap();
-          let doc = current_doc.schema.as_mut().unwrap();
-          doc.generate_field(subdoc.to_owned(), Some(self.path.clone()), Some(self.count));
-        } else {
-          let mut schema_parser = SchemaParser::new();
-          schema_parser.generate_field(
-            subdoc.to_owned(),
-            Some(self.path.clone()),
-            Some(self.count),
-          );
-          self.set_schema(schema_parser);
+        match self.schema.as_mut() {
+          Some(doc) => {
+            doc.generate_field(subdoc.to_owned(), Some(self.path.clone()), Some(self.count));
+          },
+          None => {
+            let mut schema_parser = SchemaParser::new();
+            schema_parser.generate_field(
+              subdoc.to_owned(),
+              Some(self.path.clone()),
+              Some(self.count),
+            );
+            self.set_schema(schema_parser);
+          }
         }
       }
       _ => {
@@ -111,9 +118,13 @@ impl FieldType {
             Some(self.path.clone()),
             Some(self.count),
           ),
-          _ => unimplemented!(),
+          _ => {
+            unimplemented!()
+          }
         },
-        None => unimplemented!(),
+        None => {
+          unimplemented!()
+        }
       }
     }
 
@@ -129,11 +140,10 @@ impl FieldType {
 
           if self.types.contains_key(&current_type) {
             self.types.get_mut(&current_type).unwrap().add_to_type(&val, self.count);
-          // } else {
-              // let mut field_type = FieldType::new(&self.path, &val);
-              // console::log_2(&"updating value".into(), &val.to_string().into());
-              // field_type.add_to_type(&val, self.count);
-              //self.types.insert(current_type, field_type.to_owned());
+          } else {
+            let mut field_type = FieldType::new(&self.path, &current_type);
+            field_type.add_to_type(&val, self.count);
+            self.types.insert(current_type, field_type.to_owned());
           }
           self.lengths.push(arr.len());
           Self::get_value(&val).map(|v| self.values.push(v));
@@ -239,8 +249,7 @@ mod tests {
   #[test]
   fn it_creates_new() {
     let address = "address";
-    let bson_string = Bson::String("Oranienstr. 123".to_string());
-    let field_type = FieldType::new(address, &bson_string);
+    let field_type = FieldType::new(address, "Oranienstr. 123");
     assert_eq!(field_type.path, address);
   }
 
@@ -302,7 +311,7 @@ mod tests {
   #[test]
   fn it_sets_probability() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.set_probability(10);
     assert_eq!(field_type.probability, 0.1);
   }
@@ -310,7 +319,7 @@ mod tests {
   #[test]
   fn it_gets_unique() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     field_type
       .values
@@ -333,7 +342,7 @@ mod tests {
   #[test]
   fn it_sets_unique() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     field_type
       .values
@@ -356,7 +365,7 @@ mod tests {
   #[test]
   fn it_gets_duplicates_when_none() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     field_type
       .values
@@ -368,7 +377,7 @@ mod tests {
   #[test]
   fn it_gets_duplicates_when_some() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     let has_duplicates = field_type.get_duplicates();
@@ -389,7 +398,7 @@ mod tests {
   #[test]
   fn it_sets_duplicates() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     field_type.values.push(ValueType::Str("Berlin".to_string()));
     field_type.set_duplicates();
@@ -406,7 +415,7 @@ mod tests {
   #[test]
   fn it_updates_count() {
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.update_count();
     assert_eq!(field_type.count, 2);
   }
@@ -422,7 +431,7 @@ mod tests {
   fn it_updates_value_some() {
     let bson_value = Bson::I32(1234);
     let mut field_type =
-      FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
+      FieldType::new("address", "Oranienstr. 123");
     field_type.update_value(&bson_value);
     assert_eq!(field_type.values[0], ValueType::I32(1234));
   }
