@@ -506,6 +506,188 @@ mod tests {
   }
 
   #[test]
+  fn it_combines_arrays_of_documents() {
+    let mut schema_parser = SchemaParser::new();
+    let vec_json1 = r#"{"animals": [{"name": "Nori"}, {"name": "Chashu"}]}"#;
+    let vec_json2 = r#"{"animals": [{"name": "Rey"}, {"name": "Emma"}]}"#;
+    schema_parser.write_json(vec_json1).unwrap();
+    schema_parser.write_json(vec_json2).unwrap();
+    println!("{:?}", schema_parser);
+    // assert_eq!(schema_parser.fields.len(), 1);
+    // let field = schema_parser.fields.get("animals");
+    // if let Some(field) = field {
+    //   assert_eq!(field.types.len(), 1);
+    //   let field_type = field.types.get("Array");
+    //   if let Some(field_type) = field_type {
+    //     assert_eq!(field_type.values.len(), 4);
+    //   }
+    // }
+  }
+
+  #[test]
+  fn it_combines_arrays_of_documents_of_arrays() {
+    let mut schema_parser = SchemaParser::new();
+    let vec_json1 = r#"
+    {
+        "saleDate": {
+            "$date": {
+                "$numberLong": "1427144809506"
+            }
+        },
+        "items": [{
+            "name": "printer paper",
+            "tags": ["office", "stationary"],
+            "quantity": {
+                "$numberInt": "2"
+            }
+        }, {
+            "name": "notepad",
+            "tags": ["office", "writing", "school"],
+            "quantity": {
+                "$numberInt": "2"
+            }
+        }, {
+            "name": "pens",
+            "tags": ["writing", "office", "school", "stationary"],
+            "quantity": {
+                "$numberInt": "5"
+            }
+        }, {
+            "name": "backpack",
+            "tags": ["school", "travel", "kids"],
+            "quantity": {
+                "$numberInt": "2"
+            }
+        }, {
+            "name": "notepad",
+            "tags": ["office", "writing", "school"],
+            "quantity": {
+                "$numberInt": "2"
+            }
+        }, {
+            "name": "envelopes",
+            "tags": ["stationary", "office", "general"],
+            "quantity": {
+                "$numberInt": "8"
+            }
+        }, {
+            "name": "envelopes",
+            "tags": ["stationary", "office", "general"],
+            "quantity": {
+                "$numberInt": "3"
+            }
+        }, {
+            "name": "binder",
+            "tags": ["school", "general", "organization"],
+            "quantity": {
+                "$numberInt": "3"
+            }
+        }],
+        "storeLocation": "Denver",
+        "customer": {
+            "gender": "M",
+            "age": {
+                "$numberInt": "42"
+            },
+            "email": "cauho@witwuta.sv",
+            "satisfaction": {
+                "$numberInt": "4"
+            }
+        },
+        "couponUsed": true,
+        "purchaseMethod": "Online"
+    }"#;
+    let vec_json2 = r#"
+    {
+        "saleDate": {
+            "$date": {
+                "$numberLong": "1440496862918"
+            }
+        },
+        "items": [{
+            "name": "envelopes",
+            "tags": ["stationary", "office", "general"],
+            "quantity": {
+                "$numberInt": "10"
+            }
+        }, {
+            "name": "binder",
+            "tags": ["school", "general", "organization"],
+            "quantity": {
+                "$numberInt": "9"
+            }
+        }, {
+            "name": "notepad",
+            "tags": ["office", "writing", "school"],
+            "quantity": {
+                "$numberInt": "3"
+            }
+        }, {
+            "name": "laptop",
+            "tags": ["electronics", "school", "office"],
+            "quantity": {
+                "$numberInt": "4"
+            }
+        }, {
+            "name": "notepad",
+            "tags": ["office", "writing", "school"],
+            "quantity": {
+                "$numberInt": "4"
+            }
+        }, {
+            "name": "printer paper",
+            "tags": ["office", "stationary"],
+            "quantity": {
+                "$numberInt": "1"
+            }
+        }, {
+            "name": "backpack",
+            "tags": ["school", "travel", "kids"],
+            "quantity": {
+                "$numberInt": "2"
+            }
+        }, {
+            "name": "pens",
+            "tags": ["writing", "office", "school", "stationary"],
+            "quantity": {
+                "$numberInt": "4"
+            }
+        }, {
+            "name": "envelopes",
+            "tags": ["stationary", "office", "general"],
+            "quantity": {
+                "$numberInt": "2"
+            }
+        }],
+        "storeLocation": "Seattle",
+        "customer": {
+            "gender": "M",
+            "age": {
+                "$numberInt": "50"
+            },
+            "email": "keecade@hem.uy",
+            "satisfaction": {
+                "$numberInt": "5"
+            }
+        },
+        "couponUsed": false,
+        "purchaseMethod": "Phone"
+    }"#;
+    schema_parser.write_json(vec_json1).unwrap();
+    schema_parser.write_json(vec_json2).unwrap();
+    println!("{:?}", schema_parser);
+    // assert_eq!(schema_parser.fields.len(), 1);
+    // let field = schema_parser.fields.get("animals");
+    // if let Some(field) = field {
+    //   assert_eq!(field.types.len(), 1);
+    //   let field_type = field.types.get("Array");
+    //   if let Some(field_type) = field_type {
+    //     assert_eq!(field_type.values.len(), 4);
+    //   }
+    // }
+  }
+
+  #[test]
   fn it_creates_different_field_types() {
     let mut schema_parser = SchemaParser::new();
     let number_json = r#"{"phone_number": 491234568789}"#;
