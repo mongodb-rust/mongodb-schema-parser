@@ -340,7 +340,6 @@ mod tests {
     let json_str = r#"{"name": "Nori", "type": "Cat"}"#;
     schema_parser.write_json(&json_str).unwrap();
     let output = schema_parser.flush();
-    println!("{:?}", output);
     assert_eq!(output.count, 1);
     assert_eq!(output.fields.len(), 2);
   }
