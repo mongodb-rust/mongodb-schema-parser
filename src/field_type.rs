@@ -178,7 +178,14 @@ impl FieldType {
 
   pub fn finalise_type(&mut self, parent_count: usize) {
     if !self.types.is_empty() {
-      for (_key, field) in self.types.iter_mut() {
+      for (key, field) in self.types.iter_mut() {
+        if key == "Document" {
+          // TODO: get option without unwrap
+          let schema = &mut field.schema;
+          if let Some(schema) = schema {
+            schema.finalise_schema();
+          }
+        }
         field.finalise_type(self.count);
       }
     }
