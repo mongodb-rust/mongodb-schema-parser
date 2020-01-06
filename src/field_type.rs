@@ -177,6 +177,11 @@ impl FieldType {
   }
 
   pub fn finalise_type(&mut self, parent_count: usize) {
+    if !self.types.is_empty() {
+      for (_key, field) in self.types.iter_mut() {
+        field.finalise_type(self.count);
+      }
+    }
     self.set_probability(parent_count);
     self.set_unique();
     self.set_duplicates();
@@ -220,6 +225,15 @@ impl FieldType {
   }
 
   pub fn set_duplicates(&mut self) {
+    // if any nested types have duplicates, current field_type will then also
+    // have duplicates.
+    if !self.types.is_empty() {
+      for (_key, field) in self.types.iter() {
+        if field.has_duplicates {
+          self.has_duplicates = field.has_duplicates
+        }
+      }
+    }
     let duplicates = self.get_duplicates();
     self.has_duplicates = duplicates
   }
