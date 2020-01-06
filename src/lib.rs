@@ -255,7 +255,7 @@ impl SchemaParser {
   }
 
   #[inline]
-  fn finalise_schema(&mut self) {
+  pub fn finalise_schema(&mut self) {
     for field in self.fields.values_mut() {
       // If bson_types includes a Document, find that document and let its schema
       // field update its own missing fields.
