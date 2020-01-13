@@ -12,8 +12,9 @@ Repository.
 - [Environment Setup](#environment-setup)
   * [Latest Rust](#latest-rust)
   * [Formatting](#formatting)
-  * [WASM Build](#wasm-build)
-  * [WASM in JS](#wasm-in-js)
+  * [Testing](#testing)
+  * [Wasm Build](#wasm-build)
+  * [Wasm in JS](#wasm-in-js)
 
 - [Code of Conduct](#code-of-conduct)
 
@@ -60,8 +61,20 @@ augroup END
 [vscode](https://github.com/rust-lang-nursery/rls-vscode). You can just add
 this plugin to your VSCode setup, and magic :sparkles:, everything works!
 
-### WASM Build
-To be able to use this module in JavaScript and Node, we compile it to WASM. For
+### Testing
+Rust's in-file tests can be ran with cargo. If print statements are required,
+`-- --nocapture` can be passed in as an option as well.
+```
+cargo test
+```
+
+Tests in `./tests` directory are Wasm tests, and can be ran with:
+```
+wasm-pack test --node
+```
+
+### Wasm Build
+To be able to use this module in JavaScript and Node, we compile it to Wasm. For
 that we use [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) inside our
 `lib.rs`, and [wasm-pack](https://github.com/rustwasm/wasm-pack) to make a
 package to be published to `npm`. To do so, install `wasm-pack`:
@@ -97,15 +110,15 @@ wasm-pack publish --access=public
 ``` 
 
 As you are developing sometimes it's useful to know whether you can compile
-to WASM. Especially when you add a new crate to the setup:
+to Wasm. Especially when you add a new crate to the setup:
 ```bash
 cargo check --target wasm32-unknown-unknown
 ```
 
 Travis CI will also run a wasm-pack build to check we are able to compile this correctly.
 
-### WASM in JS
-The easiest way to run WASM in the browser is via
+### Wasm in JS
+The easiest way to run Wasm in the browser is via
 [webpack](https://webpack.js.org/). If you are running this in electron, it's
 recommended to be on webpack > `4.29.6`. There have been a few bugs that were
 fixed in that version, and we find it to be quite stable. If you're in the
@@ -116,7 +129,7 @@ You will need to add `.wasm` to your [resolve extensions](https://webpack.js.org
 extensions: ['.js', '.jsx', '.json', 'less', '.wasm']
 ```
 
-WASM _needs_ to be loaded async and dynamically. The easiest way to do this
+Wasm _needs_ to be loaded async and dynamically. The easiest way to do this
 is to have a [babel
 plugin](https://www.npmjs.com/package/babel-plugin-syntax-dynamic-import):
 ```js

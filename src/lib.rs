@@ -92,7 +92,7 @@ use crate::lib_wasm::*;
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SchemaParser {
-  count: usize,
+  pub count: usize,
   fields: HashMap<String, Field>,
 }
 
