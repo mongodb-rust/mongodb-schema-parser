@@ -169,6 +169,29 @@ impl SchemaParser {
     Ok(())
   }
 
+  /// Writes Bson documents to SchemaParser's fields vector.
+  ///
+  /// # Arguments
+  /// * `doc` - A Bson Document.
+  ///
+  /// # Examples
+  /// ```ignore
+  /// use mongodb_schema_parser::SchemaParser;
+  /// use bson::{doc, bson};
+  ///
+  /// let mut schema_parser = SchemaParser::new();
+  /// let doc = doc! {"name": "Chashu", "type": "Cat"};
+  /// schema_parser.write_bson(doc);
+  /// ```
+  #[inline]
+  pub fn write_bson(&mut self, doc: Document) -> Result<(), failure::Error> {
+    // write bson internally
+    self.update_count();
+    self.generate_field(doc, None, None);
+
+    Ok(())
+  }
+
   /// Finalizes and returns SchemaParser struct -- result of all parsed
   /// documents.
   ///
@@ -318,7 +341,7 @@ mod tests {
   // }
 
   // #[test]
-  // fn it_writes_bson() {
+  // fn it_writes_raw() {
   //   let mut schema_parser = SchemaParser::new();
   //   // let bson_str = bson!({"name": "Nori", "type": "Cat"});
   //   schema_parser.write_raw(&bson_str).unwrap();
@@ -326,6 +349,19 @@ mod tests {
   //   assert_eq!(schema_parser.count, 1);
   //   assert_eq!(schema_parser.fields.len(), 2);
   // }
+
+  #[test]
+  fn it_writes_bson() {
+    let mut schema_parser = SchemaParser::new();
+    let bson_doc = doc! {
+      "name": "Nori",
+      "type": "Cat"
+    };
+    schema_parser.write_bson(bson_doc).unwrap();
+    println!("{:?}", schema_parser.flush());
+    assert_eq!(schema_parser.count, 1);
+    assert_eq!(schema_parser.fields.len(), 2);
+  }
 
   // #[bench]
   // fn bench_it_creates_write_json(bench: &mut Bencher) {
