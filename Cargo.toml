@@ -27,3 +27,9 @@ wasm-bindgen-test = "0.3.8"
 [dependencies.wasm-bindgen]
 version = "^0.2.37"
 features = ["serde-serialize"]
+
+[pacakge.metadata.wasm-pack.profile.dev]
+wasm-opt = false
+
+[pacakge.metadata.wasm-pack.profile.release]
+wasm-opt = ["-g"] 
