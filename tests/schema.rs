@@ -1,9 +1,14 @@
-use wasm_bindgen_test::*;
-use mongodb_schema_parser::SchemaParser;
-use web_sys::console;
+#[cfg(feature = "wasm")]
 use js_sys::Uint8Array;
+use mongodb_schema_parser::SchemaParser;
+#[cfg(feature = "wasm")]
 use wasm_bindgen::JsValue;
+#[cfg(feature = "wasm")]
+use wasm_bindgen_test::*;
+#[cfg(feature = "wasm")]
+use web_sys::console;
 
+#[cfg(feature = "wasm")]
 #[wasm_bindgen_test]
 fn test_binary_sales_supplies() {
   // documents that failed with an unreachable error in js land

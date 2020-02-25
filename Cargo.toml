@@ -18,12 +18,17 @@ serde = "1.0.101"
 serde_json = "1.0.40"
 serde_derive = "1.0.101"
 bson = { git = "https://github.com/lrlna/bson-rs", branch = "wasm-dec128" } 
-wee_alloc = "0.4.2"
-console_error_panic_hook = "0.1.6"
-js-sys = "0.3.25"
-web-sys = { version = "0.3.16", features = ['console'] }
-wasm-bindgen-test = "0.3.8"
+wee_alloc = { version = "0.4.2", optional = true }
+console_error_panic_hook = { version = "0.1.6", optional = true }
+js-sys = { version = "0.3.25", optional = true }
+web-sys = { version = "0.3.16", features = ['console'], optional = true }
+wasm-bindgen-test = { version = "0.3.8", optional = true }
 
 [dependencies.wasm-bindgen]
 version = "^0.2.37"
 features = ["serde-serialize"]
+optional = true
+
+[features]
+wasm = ["wee_alloc", "console_error_panic_hook", "js-sys", "web-sys", "wasm-bindgen-test", "wasm-bindgen"]
+default = ["wasm"]

@@ -62,14 +62,19 @@ extern crate serde_derive;
 extern crate serde;
 use serde_json::Value;
 
+#[cfg(feature = "wasm")]
 use js_sys::{Object, Uint8Array};
+#[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 // add to use console.log to send debugs to js land
+#[cfg(feature = "wasm")]
 use web_sys::console;
 
 // using custom allocator which is built specifically for wasm; makes it smaller
 // + faster
+#[cfg(feature = "wasm")]
 use wee_alloc;
+#[cfg(feature = "wasm")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
@@ -86,10 +91,12 @@ mod value_type;
 use crate::value_type::ValueType;
 
 // WASM Api of the Schema Parser.
+#[cfg(feature = "wasm")]
 mod lib_wasm;
+#[cfg(feature = "wasm")]
 use crate::lib_wasm::*;
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SchemaParser {
   pub count: usize,
@@ -154,6 +161,7 @@ impl SchemaParser {
   /// let uint8 = Uint8Array::new(&JsValue::from_str(r#"{ "name": "Chashu", "type": "Cat" }"#));
   /// schema_parser.write_raw(uint8);
   /// ```
+  #[cfg(feature = "wasm")]
   #[inline]
   pub fn write_raw(&mut self, uint8: Uint8Array) -> Result<(), failure::Error> {
     let mut decoded_vec = vec![0u8; uint8.length() as usize];
