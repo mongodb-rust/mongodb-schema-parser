@@ -1,5 +1,7 @@
 #![allow(clippy::option_map_unit_fn)]
-use super::{Bson, SchemaParser, ValueType, HashMap, console};
+#[cfg(feature = "wasm")]
+use super::console;
+use super::{Bson, HashMap, SchemaParser, ValueType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FieldType {
