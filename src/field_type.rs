@@ -39,6 +39,10 @@ pub static ARRAY: &str = "Array";
 pub static I32: &str = "Int32";
 pub static I64: &str = "Long";
 pub static NULL: &str = "Null";
+pub static DB_POINTER: &str = "DbPointer";
+pub static MAX_KEY: &str = "MaxKey";
+pub static MIN_KEY: &str = "MinKey";
+pub static UNDEFINED: &str = "Undefined";
 
 impl FieldType {
   pub fn new<T, U>(path: T, bson_type: U) -> Self
@@ -157,19 +161,20 @@ impl FieldType {
 
   pub fn get_value(value: &Bson) -> Option<ValueType> {
     match value {
-      Bson::RegExp(val, _)
-      | Bson::JavaScriptCode(val)
-      | Bson::JavaScriptCodeWithScope(val, _)
+      Bson::JavaScriptCode(val)
       | Bson::Symbol(val) => Some(ValueType::Str(val.to_string())),
-      Bson::I64(num) | Bson::TimeStamp(num) => Some(ValueType::I64(*num)),
-      Bson::FloatingPoint(num) => Some(ValueType::FloatingPoint(*num)),
-      Bson::UtcDatetime(date) => Some(ValueType::Str(date.clone().to_string())),
+      Bson::JavaScriptCodeWithScope(val) => Some(ValueType::Str(val.to_string())),
+      Bson::Int32(num) => Some(ValueType::I32(*num)),
+      Bson::Int64(num) => Some(ValueType::I64(*num)),
+      Bson::Timestamp(num) => Some(ValueType::I32(num.time as i32)),
+      Bson::Double(num) => Some(ValueType::FloatingPoint(*num)),
+      Bson::DateTime(date) => Some(ValueType::Str(date.clone().to_string())),
       Bson::Decimal128(d128) => Some(ValueType::Decimal128(d128.to_string())),
       Bson::Boolean(boolean) => Some(ValueType::Boolean(*boolean)),
+      Bson::RegularExpression(val) => Some(ValueType::Str(val.to_string())),
       Bson::String(string) => Some(ValueType::Str(string.to_string())),
-      Bson::Binary(_, vec) => Some(ValueType::Binary(vec.clone())),
+      Bson::Binary(vec) => Some(ValueType::Binary(vec.bytes.clone())),
       Bson::ObjectId(id) => Some(ValueType::Str(id.to_string())),
-      Bson::I32(num) => Some(ValueType::I32(*num)),
       Bson::Null => Some(ValueType::Null("Null".to_string())),
       // Array and Document get handeled separately
       _ => None,
@@ -196,25 +201,29 @@ impl FieldType {
 
   pub fn get_type(value: &Bson) -> String {
     match value {
-      Bson::JavaScriptCodeWithScope(_, _) => {
+      Bson::JavaScriptCodeWithScope(_) => {
         JAVASCRIPT_CODE_WITH_SCOPE.to_string()
       }
       Bson::JavaScriptCode(_) => JAVASCRIPT_CODE.to_string(),
-      Bson::FloatingPoint(_) => FLOATING_POINT.to_string(),
-      Bson::UtcDatetime(_) => UTCDATE_TIME.to_string(),
+      Bson::Double(_) => FLOATING_POINT.to_string(),
+      Bson::DateTime(_) => UTCDATE_TIME.to_string(),
       Bson::Decimal128(_) => DECIMAL_128.to_string(),
-      Bson::TimeStamp(_) => TIMESTAMP.to_string(),
-      Bson::Binary(_, _) => BINARY.to_string(),
-      Bson::RegExp(_, _) => REGEXP.to_string(),
+      Bson::Timestamp(_) => TIMESTAMP.to_string(),
+      Bson::Binary(_) => BINARY.to_string(),
+      Bson::RegularExpression(_) => REGEXP.to_string(),
       Bson::Document(_) => DOCUMENT.to_string(),
       Bson::ObjectId(_) => OBJECTID.to_string(),
       Bson::Boolean(_) => BOOLEAN.to_string(),
       Bson::Symbol(_) => SYMBOL.to_string(),
       Bson::String(_) => STRING.to_string(),
       Bson::Array(_) => ARRAY.to_string(),
-      Bson::I32(_) => I32.to_string(),
-      Bson::I64(_) => I64.to_string(),
+      Bson::Int32(_) => I32.to_string(),
+      Bson::Int64(_) => I64.to_string(),
       Bson::Null => NULL.to_string(),
+      Bson::DbPointer(_) => DB_POINTER.to_string(),
+      Bson::MaxKey => MAX_KEY.to_string(),
+      Bson::MinKey => MIN_KEY.to_string(),
+      Bson::Undefined => UNDEFINED.to_string(),
     }
   }
 
@@ -286,21 +295,21 @@ mod tests {
 
   #[test]
   fn it_gets_value_i32() {
-    let bson_value = Bson::I32(1234);
+    let bson_value = Bson::Int32(1234);
     let value = FieldType::get_value(&bson_value);
     assert_eq!(value, Some(ValueType::I32(1234)));
   }
 
   #[test]
   fn it_gets_value_i64() {
-    let bson_value = Bson::I64(1234);
+    let bson_value = Bson::Int64(1234);
     let value = FieldType::get_value(&bson_value);
     assert_eq!(value, Some(ValueType::I64(1234)));
   }
 
   #[test]
   fn it_gets_value_floating_point() {
-    let bson_value = Bson::FloatingPoint(1.2);
+    let bson_value = Bson::Double(1.2);
     let value = FieldType::get_value(&bson_value);
     assert_eq!(value, Some(ValueType::FloatingPoint(1.2)));
   }
@@ -450,7 +459,7 @@ mod tests {
 
   #[test]
   fn it_updates_value_some() {
-    let bson_value = Bson::I32(1234);
+    let bson_value = Bson::Int32(1234);
     let mut field_type =
       FieldType::new("address", "Oranienstr. 123");
     field_type.update_value(&bson_value);
@@ -459,7 +468,7 @@ mod tests {
 
   // #[bench]
   // fn bench_it_updates_value_some(bench: &mut Bencher) {
-  //   let bson_value = Bson::I32(1234);
+  //   let bson_value = Bson::Int32(1234);
   //   let mut field_type =
   //     FieldType::new("address", &Bson::String("Oranienstr. 123".to_string()));
   //   bench.iter(|| field_type.update_value(&bson_value));
