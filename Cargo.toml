@@ -13,17 +13,17 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-failure = "0.1.2"
-serde = "1.0.101"
-serde_json = "1.0.40"
-serde_derive = "1.0.101"
-bson = { git = "https://github.com/lrlna/bson-rs", branch = "wasm-dec128" } 
-wee_alloc = "0.4.2"
-console_error_panic_hook = "0.1.6"
-js-sys = "0.3.25"
-web-sys = { version = "0.3.16", features = ['console'] }
-wasm-bindgen-test = "0.3.8"
+failure = "0.1.8"
+serde = "1.0.137"
+serde_json = "1.0.81"
+serde_derive = "1.0.137"
+bson = "2.2"
+wee_alloc = "0.4.5"
+console_error_panic_hook = "0.1.7"
+js-sys = "0.3.57"
+web-sys = { version = "0.3.57", features = ['console'] }
+wasm-bindgen-test = "0.3.30"
 
 [dependencies.wasm-bindgen]
-version = "^0.2.37"
+version = "^0.2.80"
 features = ["serde-serialize"]

@@ -4,7 +4,7 @@
 //! given a WASM compilation.
 //!
 //! ## Usage: in Rust
-//! ```rust
+//! ```no_run
 //! extern crate mongodb_schema_parser;
 //! use mongodb_schema_parser::SchemaParser;
 //! use std::fs;
@@ -55,7 +55,7 @@
 use failure::format_err;
 // extern crate test;
 
-use bson::{bson, decode_document, doc, Bson, Document};
+use bson::{bson, doc, to_bson, Bson, Document};
 
 #[macro_use]
 extern crate serde_derive;
@@ -128,7 +128,7 @@ impl SchemaParser {
   #[inline]
   pub fn write_json(&mut self, json: &str) -> Result<(), failure::Error> {
     let val: Value = serde_json::from_str(json)?;
-    let bson = Bson::from(val);
+    let bson = to_bson(&val)?;
     // should do a match for NoneError
     let doc = bson
       .as_document()
@@ -161,7 +161,7 @@ impl SchemaParser {
     // byte stream that implements a reader and u8 slice does this.
     uint8.copy_to(&mut decoded_vec);
     let mut slice: &[u8] = &decoded_vec;
-    let doc = decode_document(&mut slice)?.to_owned();
+    let doc = Document::from_reader(&mut slice)?.to_owned();
     // write bson internally
     self.update_count();
     self.generate_field(doc, None, None);
